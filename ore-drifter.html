@@ -1013,6 +1013,7 @@ function runTests() {
 
 let state;
 let lastRender = 0;
+let currentView = null; // tracks what the context panel is showing
 
 function renderSidePanel() {
   const cap = cargoCapacity(state);
@@ -1198,12 +1199,12 @@ function renderFieldContext() {
 
     html += '<div class="section"><div class="section-title">Mining</div>';
     html += `<div class="mining-stat"><span>Drill rate</span><span>1 rock / ${interval.toFixed(1)}s</span></div>`;
-    html += `<div class="mining-stat"><span>Beam pulling</span><span>${pulling} / ${beam.capacity}</span></div>`;
-    html += `<div class="mining-stat"><span>Floating</span><span>${floating}</span></div>`;
-    html += `<div class="mining-stat"><span>Rocks lost</span><span style="color:var(--danger)">${state.rocksLost || 0}</span></div>`;
+    html += `<div class="mining-stat"><span>Beam pulling</span><span id="mining-pulling">${pulling} / ${beam.capacity}</span></div>`;
+    html += `<div class="mining-stat"><span>Floating</span><span id="mining-floating">${floating}</span></div>`;
+    html += `<div class="mining-stat"><span>Rocks lost</span><span id="mining-lost" style="color:var(--danger)">${state.rocksLost || 0}</span></div>`;
 
     // Rock visualization
-    html += '<div class="rocks-display">';
+    html += '<div class="rocks-display" id="mining-rocks">';
     for (const rock of state.looseRocks) {
       const ore = ORES.find(o => o.id === rock.ore);
       html += `<div class="rock${rock.pulling ? ' pulling' : ''}" style="background:${ore.color}"></div>`;
@@ -1242,9 +1243,9 @@ function renderTravelContext() {
     <div style="font-size:0.7rem;color:var(--text-dim)">Traveling to</div>
     <div style="font-size:1rem;color:var(--text-bright);margin:0.3rem 0">${destName}</div>
     <div class="bar-container" style="max-width:300px;margin:0.5rem auto">
-      <div class="bar-fill" style="width:${pct}%;background:var(--accent2)"></div>
+      <div class="bar-fill" id="travel-bar" style="width:${pct}%;background:var(--accent2)"></div>
     </div>
-    <div class="eta">${Math.ceil(eta)}s</div>
+    <div class="eta" id="travel-eta">${Math.ceil(eta)}s</div>
   </div>`;
 }
 
@@ -1254,10 +1255,14 @@ function renderRefineContext() {
   return `<div class="travel-progress">
     <div style="font-size:0.7rem;color:var(--text-dim)">Refining cargo</div>
     <div class="bar-container" style="max-width:300px;margin:0.5rem auto">
-      <div class="bar-fill" style="width:${pct}%;background:var(--accent2)"></div>
+      <div class="bar-fill" id="refine-bar" style="width:${pct}%;background:var(--accent2)"></div>
     </div>
-    <div class="eta">${Math.ceil(eta)}s</div>
+    <div class="eta" id="refine-eta">${Math.ceil(eta)}s</div>
   </div>`;
+}
+
+function viewKey() {
+  return state.status + ':' + state.location;
 }
 
 function render() {
@@ -1267,18 +1272,63 @@ function render() {
 
   renderSidePanel();
 
-  const ctx = document.getElementById('context-panel');
   if (state.status === 'emergency_jump') {
     state = emergencyJump(state);
   }
+
+  const key = viewKey();
+  if (key !== currentView) {
+    currentView = key;
+    const ctx = document.getElementById('context-panel');
+    if (state.status === 'traveling') {
+      ctx.innerHTML = renderTravelContext();
+    } else if (state.status === 'refining') {
+      ctx.innerHTML = renderRefineContext();
+    } else if (state.status === 'docked_station') {
+      ctx.innerHTML = renderStationContext();
+    } else if (state.status === 'mining' || state.status === 'docked_field') {
+      ctx.innerHTML = renderFieldContext();
+    }
+  }
+}
+
+// Lightweight update for tick — only touches dynamic values, never replaces innerHTML
+function tickRender() {
+  document.getElementById('credits').textContent = fmt(state.credits) + ' cr';
+  renderSidePanel();
+
   if (state.status === 'traveling') {
-    ctx.innerHTML = renderTravelContext();
+    const pct = state.travelTime > 0 ? state.travelProgress / state.travelTime * 100 : 0;
+    const eta = Math.max(0, state.travelTime - state.travelProgress);
+    const el = document.getElementById('travel-bar');
+    if (el) el.style.width = pct + '%';
+    const etaEl = document.getElementById('travel-eta');
+    if (etaEl) etaEl.textContent = Math.ceil(eta) + 's';
   } else if (state.status === 'refining') {
-    ctx.innerHTML = renderRefineContext();
-  } else if (state.status === 'docked_station') {
-    ctx.innerHTML = renderStationContext();
-  } else if (state.status === 'mining' || state.status === 'docked_field') {
-    ctx.innerHTML = renderFieldContext();
+    const pct = REFINE_TIME > 0 ? state.refineProgress / REFINE_TIME * 100 : 0;
+    const eta = Math.max(0, REFINE_TIME - state.refineProgress);
+    const el = document.getElementById('refine-bar');
+    if (el) el.style.width = pct + '%';
+    const etaEl = document.getElementById('refine-eta');
+    if (etaEl) etaEl.textContent = Math.ceil(eta) + 's';
+  } else if (state.status === 'mining') {
+    const beam = EQUIP.beam[state.equipment.beam];
+    const pulling = state.looseRocks.filter(r => r.pulling).length;
+    const floating = state.looseRocks.filter(r => !r.pulling).length;
+    const el = (id) => document.getElementById(id);
+    if (el('mining-pulling')) el('mining-pulling').textContent = `${pulling} / ${beam.capacity}`;
+    if (el('mining-floating')) el('mining-floating').textContent = floating;
+    if (el('mining-lost')) el('mining-lost').textContent = state.rocksLost || 0;
+    // Update rocks display
+    const rd = el('mining-rocks');
+    if (rd) {
+      let html = '';
+      for (const rock of state.looseRocks) {
+        const ore = ORES.find(o => o.id === rock.ore);
+        html += `<div class="rock${rock.pulling ? ' pulling' : ''}" style="background:${ore.color}"></div>`;
+      }
+      rd.innerHTML = html;
+    }
   }
 }
 
@@ -1286,11 +1336,15 @@ function render() {
 // ACTIONS
 // ═══════════════════════════════════════
 
+function fullRender() {
+  currentView = null;
+  render();
+}
+
 function doSell(oreId, qty) {
   const price = calcOrePrice(oreId, state.location, state.demand);
   const actual = Math.min(qty, state.cargo[oreId] || 0);
   const displayPrice = state.refineBonus ? price * REFINE_BONUS : price;
-  // Apply refine bonus by temporarily modifying demand to achieve the multiplied price
   if (state.refineBonus) {
     const totalEarning = Math.round(displayPrice * actual * 10) / 10;
     const newCargo = { ...state.cargo, [oreId]: (state.cargo[oreId] || 0) - actual };
@@ -1300,51 +1354,50 @@ function doSell(oreId, qty) {
     newDemand[state.location] = { ...newDemand[state.location], [oreId]: Math.max(DEMAND_MIN, curDemand - actual * DEMAND_DROP_PER_UNIT) };
     state = { ...state, cargo: newCargo, credits: state.credits + totalEarning, demand: newDemand };
     state.totalEarned += totalEarning;
-    // Clear refine bonus if all cargo sold
     if (cargoTotal(state.cargo) === 0) state.refineBonus = false;
   } else {
     const before = state.credits;
     state = sellOre(state, oreId, qty, state.location);
     state.totalEarned += state.credits - before;
   }
-  render();
+  fullRender();
 }
 
 function doBuyConsumable(type, qty) {
   state = buyConsumable(state, type, qty, state.location);
-  render();
+  fullRender();
 }
 
 function doBuyEquip(category, tier, price) {
   state = buyEquipment(state, category, tier, price);
-  render();
+  fullRender();
 }
 
 function doTravel(destId) {
   if (state.status === 'mining') return;
   state = startTravel(state, destId);
   state.refineBonus = false;
-  render();
+  fullRender();
 }
 
 function doStartMining() {
   state = startMining(state);
-  render();
+  fullRender();
 }
 
 function doStopMining() {
   state = stopMining(state);
-  render();
+  fullRender();
 }
 
 function doRepair() {
   state = useRepairKit(state);
-  render();
+  fullRender();
 }
 
 function doRefine() {
   state = startRefine(state);
-  render();
+  fullRender();
 }
 
 // ═══════════════════════════════════════
@@ -1363,9 +1416,14 @@ function tick() {
   state = tickShieldDamage(state, dt);
   state = tickRefine(state, dt);
 
-  // Render at ~15fps for smooth bars, but not every tick
-  if (now - lastRender > 66) {
+  // Check if view changed (status transition like travel→docked)
+  if (viewKey() !== currentView) {
     render();
+  }
+
+  // Lightweight update at ~15fps for smooth bars
+  if (now - lastRender > 66) {
+    tickRender();
     lastRender = now;
   }
 }
