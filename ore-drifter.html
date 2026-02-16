@@ -237,6 +237,37 @@ body {
   transition: opacity 0.3s;
 }
 .save-indicator.show { opacity: 0.7; }
+.auto-pill {
+  font-size: 0.6rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 10px;
+  cursor: pointer;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  transition: all 0.15s;
+  user-select: none;
+}
+.auto-pill.on { background: var(--success); color: var(--bg); }
+.auto-pill.off { background: var(--surface-3); color: var(--text-dim); }
+.autopilot-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.15rem 0;
+  font-size: 0.7rem;
+}
+.autopilot-label { color: var(--text-dim); }
+.autopilot-select {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family: 'DM Mono', monospace;
+  font-size: 0.65rem;
+  padding: 0.15rem 0.3rem;
+  border-radius: 3px;
+  max-width: 140px;
+}
+.autopilot-select:disabled { opacity: 0.4; }
 
 /* Responsive */
 @media (max-width: 700px) {
@@ -272,6 +303,7 @@ body {
   <div class="top-bar">
     <span class="credits" id="credits">0 cr</span>
     <span class="title">ORE DRIFTER</span>
+    <span class="auto-pill on" id="auto-pill" onclick="toggleAutopilot()">AUTO</span>
     <span class="location" id="location">Mining Outpost</span>
   </div>
   <div class="main">
@@ -299,11 +331,16 @@ body {
         <div class="section-title">Consumables</div>
         <div id="consumable-list"></div>
       </div>
+      <div class="section" id="autopilot-section">
+        <div class="section-title">Autopilot</div>
+        <div class="autopilot-row"><label class="autopilot-label">Field</label><select id="auto-field-select" class="autopilot-select" onchange="setAutoField(this.value)"></select></div>
+        <div class="autopilot-row"><label class="autopilot-label">Station</label><select id="auto-station-select" class="autopilot-select" onchange="setAutoStation(this.value)"></select></div>
+      </div>
     </div>
     <div class="context-panel" id="context-panel"></div>
   </div>
 </div>
-<div class="version">v0.1</div>
+<div class="version">v0.2</div>
 <div class="save-indicator" id="save-indicator">saved</div>
 
 <div id="test-container" style="display:none">
@@ -315,7 +352,7 @@ body {
 // CONSTANTS
 // ═══════════════════════════════════════
 
-const VERSION = '0.1';
+const VERSION = '0.2';
 const SAVE_KEY = 'oredrifter_v1';
 
 const ORES = [
@@ -751,6 +788,142 @@ function startRefine(state) {
 }
 
 // ═══════════════════════════════════════
+// AUTOPILOT
+// ═══════════════════════════════════════
+
+function bestField(state) {
+  let best = null, bestValue = -1;
+  for (const field of FIELDS) {
+    if (!canEnterField(state, field.id)) continue;
+    let expected = 0;
+    for (const [oreId, weight] of Object.entries(field.ores)) {
+      const ore = ORES.find(o => o.id === oreId);
+      expected += ore.base * weight;
+    }
+    expected *= field.mineRate;
+    if (expected > bestValue) { bestValue = expected; best = field.id; }
+  }
+  return best || 'dust_belt';
+}
+
+function bestStation(state, cargo) {
+  let best = null, bestValue = -1;
+  const total = cargoTotal(cargo);
+  for (const station of STATIONS) {
+    let value = 0;
+    if (total > 0) {
+      for (const oreId of ORE_IDS) {
+        const qty = cargo[oreId] || 0;
+        if (qty > 0) value += calcOrePrice(oreId, station.id, state.demand) * qty;
+      }
+    } else {
+      const field = getField(state.autoField);
+      if (field) {
+        for (const [oreId, weight] of Object.entries(field.ores)) {
+          value += calcOrePrice(oreId, station.id, state.demand) * weight * 100;
+        }
+      }
+    }
+    if (value > bestValue) { bestValue = value; best = station.id; }
+  }
+  return best || 'mining_outpost';
+}
+
+function tickAutopilot(state) {
+  if (!state.autopilot) return state;
+  let s = state;
+
+  if (s.status === 'docked_station') {
+    // 1. Sell all ore
+    const newCargo = { ...s.cargo };
+    let earnings = 0;
+    const newDemand = { ...s.demand };
+    for (const oreId of ORE_IDS) {
+      const qty = newCargo[oreId] || 0;
+      if (qty <= 0) continue;
+      const price = calcOrePrice(oreId, s.location, s.demand);
+      const mult = s.refineBonus ? REFINE_BONUS : 1;
+      earnings += Math.round(price * mult * qty * 10) / 10;
+      newCargo[oreId] = 0;
+      if (!newDemand[s.location]) newDemand[s.location] = {};
+      const curDemand = newDemand[s.location][oreId] ?? 1;
+      newDemand[s.location] = { ...newDemand[s.location], [oreId]: Math.max(DEMAND_MIN, curDemand - qty * DEMAND_DROP_PER_UNIT) };
+    }
+    if (earnings > 0) {
+      s = { ...s, cargo: newCargo, credits: s.credits + earnings, demand: newDemand, totalEarned: s.totalEarned + earnings };
+      if (s.refineBonus) s = { ...s, refineBonus: false };
+    }
+
+    // 2. Buy consumables
+    const cap = cargoCapacity(s);
+    const chargesNeeded = Math.max(0, cap - s.charges);
+    if (chargesNeeded > 0) s = buyConsumable(s, 'charges', chargesNeeded, s.location);
+
+    const engine = EQUIP.engine[s.equipment.engine];
+    const fuelOut = calcTravelFuel(s.location, s.autoField, engine.fuelEff);
+    const fuelBack = calcTravelFuel(s.autoField, s.autoStation, engine.fuelEff);
+    const fuelNeeded = Math.max(0, Math.ceil((fuelOut + fuelBack) * 1.5) - s.fuel);
+    if (fuelNeeded > 0) s = buyConsumable(s, 'fuel', fuelNeeded, s.location);
+
+    const targetField = getField(s.autoField);
+    if (targetField && targetField.danger > 0 && EQUIP.shield[s.equipment.shield].hp > 0 && s.repairKits < 3) {
+      s = buyConsumable(s, 'repairKits', 3 - s.repairKits, s.location);
+    }
+
+    // 3. Buy equipment (one per visit)
+    const station = getStation(s.location);
+    if (station) {
+      const drill = EQUIP.drill[s.equipment.drill];
+      const beam = EQUIP.beam[s.equipment.beam];
+      const beamBottleneck = drill.speed > beam.speed * beam.capacity;
+      const priority = beamBottleneck
+        ? ['beam', 'drill', 'cargo', 'engine', 'shield']
+        : ['drill', 'beam', 'cargo', 'engine', 'shield'];
+      const prevShield = s.equipment.shield;
+      for (const cat of priority) {
+        const nextTier = s.equipment[cat] + 1;
+        if (nextTier >= EQUIP[cat].length) continue;
+        if (!station.equipStock.includes(nextTier)) continue;
+        const item = EQUIP[cat][nextTier];
+        if (s.credits >= item.price) {
+          s = buyEquipment(s, cat, nextTier, item.price);
+          break;
+        }
+      }
+      if (s.equipment.shield > prevShield) {
+        s = { ...s, autoField: bestField(s), autoStation: bestStation(s, s.cargo) };
+      }
+    }
+
+    // 4. Navigate to target field
+    const eng = EQUIP.engine[s.equipment.engine];
+    const fuelCost = calcTravelFuel(s.location, s.autoField, eng.fuelEff);
+    if (s.fuel >= fuelCost) {
+      s = startTravel(s, s.autoField);
+      s = { ...s, refineBonus: false };
+    }
+  } else if (s.status === 'docked_field') {
+    if (s.charges > 0 && cargoTotal(s.cargo) < cargoCapacity(s) && canEnterField(s, s.location)) {
+      s = startMining(s);
+    } else {
+      const engine = EQUIP.engine[s.equipment.engine];
+      const fuelCost = calcTravelFuel(s.location, s.autoStation, engine.fuelEff);
+      if (s.fuel >= fuelCost) {
+        s = startTravel(s, s.autoStation);
+        s = { ...s, refineBonus: false };
+      }
+    }
+  } else if (s.status === 'mining') {
+    const maxHp = shieldMaxHp(s);
+    if (maxHp > 0 && s.shieldHp < maxHp * 0.3 && s.repairKits > 0) {
+      s = useRepairKit(s);
+    }
+  }
+
+  return s;
+}
+
+// ═══════════════════════════════════════
 // STATE
 // ═══════════════════════════════════════
 
@@ -779,6 +952,9 @@ function freshState() {
     totalMined: 0,
     totalLost: 0,
     playTime: 0,
+    autopilot: true,
+    autoField: 'dust_belt',
+    autoStation: 'mining_outpost',
   };
 }
 
@@ -996,6 +1172,53 @@ function runTests() {
   assert('tickRefine: completes', ref.status === 'docked_station');
   assert('tickRefine: bonus set', ref.refineBonus === true);
 
+  // bestField tests
+  ts = freshState();
+  // dust_belt: (0.7*4 + 0.3*10)*1.0 = 5.8, rocky_reach: (0.45*4 + 0.45*10 + 0.1*28)*1.1 = 10.01
+  assert('bestField: picks highest value enterable field', bestField(ts) === 'rocky_reach');
+  ts.equipment.shield = 1; // Deflector: minDanger 1 → unlocks iron_nebula
+  let bf2 = bestField(ts);
+  assert('bestField: unlocks higher fields with shield', bf2 !== 'dust_belt');
+
+  // bestStation tests
+  ts = freshState();
+  ts.autoField = 'dust_belt';
+  // iron: outpost 4*1.0=4, trading hub 4*1.1=4.4 (best), depot 4*0.7=2.8, market 4*0.8=3.2, refinery 4*0.9=3.6
+  assert('bestStation: picks best station for iron', bestStation(ts, { iron: 50, copper: 0, titanium: 0, crystal: 0, void: 0 }) === 'trading_hub');
+
+  // tickAutopilot: disabled → returns state unchanged
+  ts = freshState();
+  ts.autopilot = false;
+  ts.status = 'docked_station';
+  ts.cargo.iron = 10;
+  ap = tickAutopilot(ts);
+  assert('tickAutopilot: disabled returns unchanged', ap === ts);
+
+  // tickAutopilot: at station with cargo → sells, buys consumables, travels
+  ts = freshState();
+  ts.autopilot = true;
+  ts.autoField = 'dust_belt';
+  ts.autoStation = 'mining_outpost';
+  ts.location = 'mining_outpost';
+  ts.status = 'docked_station';
+  ts.cargo.iron = 10;
+  ts.credits = 50;
+  var ap = tickAutopilot(ts);
+  assert('tickAutopilot: sells ore at station', ap.cargo.iron === 0);
+  assert('tickAutopilot: bought charges', ap.charges > ts.charges);
+  assert('tickAutopilot: travels to target field', ap.status === 'traveling' && ap.travelDest === 'dust_belt');
+
+  // tickAutopilot: at field docked → starts mining
+  ts = freshState();
+  ts.autopilot = true;
+  ts.autoField = 'dust_belt';
+  ts.autoStation = 'mining_outpost';
+  ts.location = 'dust_belt';
+  ts.status = 'docked_field';
+  ts.charges = 10;
+  ap = tickAutopilot(ts);
+  assert('tickAutopilot: starts mining at field', ap.status === 'mining');
+
   // Render results
   const el = document.getElementById('test-results');
   let html = '<h2 style="color:var(--accent);font-family:Michroma;margin-bottom:0.5rem">ORE DRIFTER — Tests</h2>';
@@ -1058,6 +1281,35 @@ function renderSidePanel() {
     `<div class="consumable-row"><span>Charges</span><span>${state.charges}</span></div>` +
     `<div class="consumable-row"><span>Fuel</span><span>${state.fuel}</span></div>` +
     `<div class="consumable-row"><span>Repair Kits</span><span>${state.repairKits}</span></div>`;
+
+  renderAutopilot();
+}
+
+function renderAutopilot() {
+  const pill = document.getElementById('auto-pill');
+  if (pill) pill.className = 'auto-pill ' + (state.autopilot ? 'on' : 'off');
+
+  const fieldSelect = document.getElementById('auto-field-select');
+  if (fieldSelect) {
+    let html = '';
+    for (const field of FIELDS) {
+      if (canEnterField(state, field.id)) {
+        html += `<option value="${field.id}"${field.id === state.autoField ? ' selected' : ''}>${field.name}</option>`;
+      }
+    }
+    if (fieldSelect.innerHTML !== html) fieldSelect.innerHTML = html;
+    fieldSelect.disabled = !state.autopilot;
+  }
+
+  const stationSelect = document.getElementById('auto-station-select');
+  if (stationSelect) {
+    let html = '';
+    for (const station of STATIONS) {
+      html += `<option value="${station.id}"${station.id === state.autoStation ? ' selected' : ''}>${station.name}</option>`;
+    }
+    if (stationSelect.innerHTML !== html) stationSelect.innerHTML = html;
+    stationSelect.disabled = !state.autopilot;
+  }
 }
 
 function renderNavigation(excludeCurrent) {
@@ -1400,6 +1652,19 @@ function doRefine() {
   fullRender();
 }
 
+function toggleAutopilot() {
+  state.autopilot = !state.autopilot;
+  renderAutopilot();
+}
+
+function setAutoField(fieldId) {
+  state.autoField = fieldId;
+}
+
+function setAutoStation(stationId) {
+  state.autoStation = stationId;
+}
+
 // ═══════════════════════════════════════
 // GAME LOOP
 // ═══════════════════════════════════════
@@ -1415,6 +1680,7 @@ function tick() {
   state = tickTravel(state, dt);
   state = tickShieldDamage(state, dt);
   state = tickRefine(state, dt);
+  state = tickAutopilot(state);
 
   // Check if view changed (status transition like travel→docked)
   if (viewKey() !== currentView) {
@@ -1436,6 +1702,10 @@ if (location.search.includes('test')) {
   runTests();
 } else {
   state = loadState();
+  if (state.autoField === 'dust_belt' && state.autoStation === 'mining_outpost') {
+    state.autoField = bestField(state);
+    state.autoStation = bestStation(state, state.cargo);
+  }
   render();
   setInterval(tick, 50);
   setInterval(() => saveState(state), 30000);
