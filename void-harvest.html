@@ -1,0 +1,824 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VOID HARVEST</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Michroma&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #07070e;
+  --surface: #0d0d1a;
+  --surface-2: #161630;
+  --accent: #00e8fc;
+  --accent-dim: #007888;
+  --purple: #8b5cf6;
+  --pink: #f472b6;
+  --text: #c0c0d4;
+  --text-muted: #3e3e5c;
+  --glow: rgba(0, 232, 252, 0.4);
+}
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  background: radial-gradient(ellipse at 50% 0%, rgba(0,232,252,0.02) 0%, transparent 60%), var(--bg);
+  color: var(--text);
+  font-family: 'DM Mono', monospace;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(0,0,0,0.015) 3px, rgba(0,0,0,0.015) 4px);
+  pointer-events: none;
+  z-index: 10000;
+}
+#game {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 1.5rem 1.2rem 4rem;
+}
+header {
+  text-align: center;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid var(--surface-2);
+  margin-bottom: 1.8rem;
+}
+header h1 {
+  font-family: 'Michroma', sans-serif;
+  font-size: 1.1rem;
+  letter-spacing: 0.6em;
+  color: var(--accent);
+  text-shadow: 0 0 40px var(--glow), 0 0 80px rgba(0,232,252,0.15);
+}
+.main {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2.5rem;
+  align-items: start;
+}
+.panel-left {
+  position: sticky;
+  top: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.2rem;
+}
+.orb-wrap {
+  position: relative;
+  width: 260px;
+  height: 260px;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.06s;
+}
+.orb-wrap:active { transform: scale(0.96); }
+#orb-canvas {
+  width: 260px;
+  height: 260px;
+  border-radius: 50%;
+  display: block;
+}
+.stats { text-align: center; }
+.energy-value {
+  font-size: 2.6rem;
+  font-weight: 500;
+  color: #fff;
+  text-shadow: 0 0 24px rgba(0,232,252,0.12);
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+}
+.energy-label {
+  font-family: 'Michroma', sans-serif;
+  font-size: 0.55rem;
+  letter-spacing: 0.4em;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  margin-top: 0.25rem;
+}
+.rate-row {
+  margin-top: 0.9rem;
+  display: flex;
+  gap: 1.4rem;
+  justify-content: center;
+  font-size: 0.8rem;
+  color: var(--accent-dim);
+}
+.rate-row span { opacity: 0.85; }
+.hotkeys {
+  font-size: 0.55rem;
+  color: var(--text-muted);
+  margin-top: 0.6rem;
+  opacity: 0.5;
+}
+.reset-btn {
+  background: none;
+  border: 1px solid var(--surface-2);
+  color: var(--text-muted);
+  font-family: 'DM Mono', monospace;
+  font-size: 0.6rem;
+  padding: 0.3rem 0.7rem;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-top: 0.4rem;
+}
+.reset-btn:hover { border-color: #ff4060; color: #ff4060; }
+
+/* Right panel */
+.panel-right {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-height: calc(100vh - 3rem);
+  overflow-y: auto;
+  padding-right: 0.3rem;
+  scrollbar-width: thin;
+  scrollbar-color: var(--text-muted) transparent;
+}
+.panel-right::-webkit-scrollbar { width: 4px; }
+.panel-right::-webkit-scrollbar-track { background: transparent; }
+.panel-right::-webkit-scrollbar-thumb { background: var(--text-muted); border-radius: 2px; }
+.section-title {
+  font-family: 'Michroma', sans-serif;
+  font-size: 0.55rem;
+  letter-spacing: 0.3em;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  padding: 0.6rem 0 0.3rem;
+  border-bottom: 1px solid var(--surface-2);
+}
+.section-title:not(:first-child) { margin-top: 0.6rem; }
+
+/* Upgrade cards */
+.card {
+  position: relative;
+  overflow: hidden;
+  background: var(--surface);
+  border: 1px solid var(--surface-2);
+  border-left: 3px solid var(--surface-2);
+  border-radius: 4px;
+  padding: 0.65rem 0.85rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.15rem;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.card::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 2px;
+  width: var(--progress, 0%);
+  background: var(--accent);
+  opacity: 0.2;
+  transition: width 0.4s ease;
+}
+.card.affordable { border-left-color: var(--accent); }
+.card.affordable:hover {
+  background: var(--surface-2);
+  box-shadow: 0 0 24px rgba(0,232,252,0.04);
+  transform: translateX(2px);
+}
+.card.affordable:active { transform: translateX(1px) scale(0.99); }
+.card.dim { opacity: 0.25; cursor: default; }
+.card.dim:hover { transform: none; background: var(--surface); box-shadow: none; }
+.card.purchased {
+  opacity: 0.35;
+  cursor: default;
+  border-left-color: var(--purple);
+}
+.card.purchased:hover { transform: none; background: var(--surface); box-shadow: none; }
+.card-name { font-size: 0.8rem; color: var(--text); font-weight: 400; }
+.card-rate { font-size: 0.6rem; color: var(--text-muted); margin-top: 0.1rem; }
+.card-cost { text-align: right; font-size: 0.8rem; color: var(--accent-dim); }
+.card.affordable .card-cost { color: var(--accent); }
+.card-count { text-align: right; font-size: 0.6rem; color: var(--text-muted); }
+
+/* Particles & effects */
+#particles {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9999;
+}
+.particle {
+  position: absolute;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 6px var(--accent);
+  animation: pfly 0.45s ease-out forwards;
+}
+@keyframes pfly { to { transform: translate(var(--dx), var(--dy)); opacity: 0; } }
+.float-text {
+  position: absolute;
+  font-family: 'DM Mono', monospace;
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--accent);
+  text-shadow: 0 0 8px var(--glow);
+  pointer-events: none;
+  animation: fup 0.7s ease-out forwards;
+  white-space: nowrap;
+}
+@keyframes fup {
+  0% { transform: translateY(0) scale(1); opacity: 1; }
+  100% { transform: translateY(-50px) scale(0.8); opacity: 0; }
+}
+.toast {
+  position: fixed;
+  top: 1.2rem;
+  right: 1.2rem;
+  background: var(--surface-2);
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  padding: 0.65rem 1rem;
+  font-size: 0.75rem;
+  font-family: 'Michroma', sans-serif;
+  letter-spacing: 0.1em;
+  color: var(--accent);
+  text-shadow: 0 0 10px rgba(0,232,252,0.15);
+  z-index: 10001;
+  animation: tin 0.3s ease, tout 0.3s ease 2.7s forwards;
+  pointer-events: none;
+}
+@keyframes tin { from { transform: translateX(110%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+@keyframes tout { from { opacity: 1; } to { opacity: 0; transform: translateY(-8px); } }
+.save-ind {
+  position: fixed;
+  bottom: 0.8rem;
+  left: 0.8rem;
+  font-size: 0.55rem;
+  color: var(--text-muted);
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+.save-ind.on { opacity: 0.8; }
+
+/* Offline popup */
+.offline-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(4,4,10,0.88);
+  z-index: 10002;
+  animation: tin 0.3s ease;
+}
+.offline-box {
+  background: var(--surface);
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  padding: 2.2rem 2.5rem;
+  text-align: center;
+  max-width: 360px;
+  box-shadow: 0 0 60px rgba(0,232,252,0.08);
+}
+.offline-box h2 {
+  font-family: 'Michroma', sans-serif;
+  font-size: 0.7rem;
+  letter-spacing: 0.35em;
+  color: var(--accent);
+  margin-bottom: 0.8rem;
+}
+.offline-box .away { font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.4rem; }
+.offline-box .amt {
+  font-size: 2.2rem;
+  font-weight: 500;
+  color: #fff;
+  text-shadow: 0 0 20px rgba(0,232,252,0.15);
+  margin: 0.3rem 0;
+}
+.offline-box .lbl {
+  font-family: 'Michroma', sans-serif;
+  font-size: 0.5rem;
+  letter-spacing: 0.3em;
+  color: var(--text-muted);
+  margin-bottom: 1.5rem;
+}
+.offline-box button {
+  background: var(--accent);
+  color: var(--bg);
+  border: none;
+  font-family: 'Michroma', sans-serif;
+  font-size: 0.6rem;
+  letter-spacing: 0.25em;
+  font-weight: 700;
+  padding: 0.6rem 2rem;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: box-shadow 0.2s;
+}
+.offline-box button:hover { box-shadow: 0 0 20px var(--glow); }
+
+/* Purchase flash */
+@keyframes cardflash {
+  0% { background: rgba(0,232,252,0.12); }
+  100% { background: var(--surface); }
+}
+.card.flash { animation: cardflash 0.3s ease; }
+
+@media (max-width: 700px) {
+  .main { grid-template-columns: 1fr; gap: 1.5rem; }
+  .panel-left { position: static; }
+  .orb-wrap, #orb-canvas { width: 180px; height: 180px; }
+  .energy-value { font-size: 2rem; }
+  .panel-right { max-height: none; }
+  header h1 { font-size: 0.85rem; letter-spacing: 0.4em; }
+}
+</style>
+</head>
+<body>
+<div id="particles"></div>
+<div id="game">
+  <header><h1>VOID HARVEST</h1></header>
+  <div class="main">
+    <div class="panel-left">
+      <div class="orb-wrap" id="orb-wrap">
+        <canvas id="orb-canvas"></canvas>
+      </div>
+      <div class="stats">
+        <div class="energy-value" id="energy-display">0</div>
+        <div class="energy-label">void energy</div>
+        <div class="rate-row">
+          <span id="eps-display">0/s</span>
+          <span id="click-display">+1/click</span>
+        </div>
+        <div class="hotkeys">space to click · 1-7 buy generators</div>
+      </div>
+      <button class="reset-btn" onclick="resetGame()">reset</button>
+    </div>
+    <div class="panel-right">
+      <div class="section-title">generators</div>
+      <div id="gen-list"></div>
+      <div class="section-title">amplifiers</div>
+      <div id="amp-list"></div>
+    </div>
+  </div>
+</div>
+<div class="save-ind" id="save-ind">saved</div>
+<div style="position:fixed;bottom:0.8rem;right:0.8rem;font-size:0.5rem;color:var(--text-muted);opacity:0.35">v2</div>
+
+<script>
+// === CONSTANTS ===
+const GENS = [
+  { name: 'Quantum Tap',      base: 15,        rate: 0.1,   desc: '+0.1/s each' },
+  { name: 'Void Probe',       base: 100,       rate: 1,     desc: '+1/s each' },
+  { name: 'Dark Extractor',   base: 1100,      rate: 8,     desc: '+8/s each' },
+  { name: 'Singularity Core', base: 12000,     rate: 47,    desc: '+47/s each' },
+  { name: 'Dimension Rift',   base: 130000,    rate: 260,   desc: '+260/s each' },
+  { name: 'Cosmic Weaver',    base: 1400000,   rate: 1400,  desc: '+1.4K/s each' },
+  { name: 'Entropy Engine',   base: 20000000,  rate: 7800,  desc: '+7.8K/s each' },
+];
+const AMPS = [
+  { name: 'Amplified Touch',  cost: 100,       multi: 2, desc: '×2 click power' },
+  { name: 'Resonant Strike',  cost: 1000,      multi: 2, desc: '×2 click power' },
+  { name: 'Void Grasp',       cost: 10000,     multi: 2, desc: '×2 click power' },
+  { name: 'Quantum Punch',    cost: 100000,    multi: 2, desc: '×2 click power' },
+  { name: 'Singularity Tap',  cost: 1000000,   multi: 2, desc: '×2 click power' },
+];
+const MILESTONES = [
+  { at: 100,   msg: 'FIRST LIGHT' },
+  { at: 1e3,   msg: 'SPARK' },
+  { at: 1e4,   msg: 'IGNITION' },
+  { at: 1e5,   msg: 'VOID WALKER' },
+  { at: 1e6,   msg: 'ENERGY BARON' },
+  { at: 1e7,   msg: 'DARK HARVEST' },
+  { at: 1e8,   msg: 'COSMIC POWER' },
+  { at: 1e9,   msg: 'SINGULARITY' },
+  { at: 1e10,  msg: 'INFINITE ENGINE' },
+  { at: 1e12,  msg: 'TRANSCENDENCE' },
+];
+const COST_MULT = 1.15;
+
+// === STATE ===
+let S = {
+  energy: 0, totalEnergy: 0, totalClicks: 0,
+  gens: GENS.map(() => 0),
+  amps: AMPS.map(() => false),
+  milestones: [],
+  lastSave: Date.now(),
+};
+
+// === DOM ===
+const $ = id => document.getElementById(id);
+const $energy = $('energy-display'), $eps = $('eps-display'), $click = $('click-display');
+const $genList = $('gen-list'), $ampList = $('amp-list');
+const $particles = $('particles'), $saveInd = $('save-ind');
+const $orbWrap = $('orb-wrap');
+const canvas = $('orb-canvas'), ctx = canvas.getContext('2d');
+
+// === UTILITY ===
+function fmt(n) {
+  if (n < 0) return '-' + fmt(-n);
+  if (n < 10) return n < 0.05 ? '0' : n.toFixed(1);
+  if (n < 1000) return Math.floor(n).toString();
+  const suf = ['', 'K', 'M', 'B', 'T', 'Qa', 'Qi', 'Sx', 'Sp'];
+  const t = Math.min(Math.floor(Math.log10(n) / 3), suf.length - 1);
+  const v = n / Math.pow(1000, t);
+  return (v < 10 ? v.toFixed(2) : v < 100 ? v.toFixed(1) : Math.floor(v)) + suf[t];
+}
+function genCost(i) { return Math.floor(GENS[i].base * Math.pow(COST_MULT, S.gens[i])); }
+function eps() {
+  let r = 0;
+  for (let i = 0; i < GENS.length; i++) r += GENS[i].rate * S.gens[i];
+  return r;
+}
+function clickPower() {
+  let p = 1;
+  for (let i = 0; i < AMPS.length; i++) if (S.amps[i]) p *= AMPS[i].multi;
+  return p;
+}
+
+// === EFFECTS ===
+let clickBursts = [];
+
+function spawnParticles(x, y) {
+  const n = 5 + Math.floor(Math.random() * 4);
+  for (let i = 0; i < n; i++) {
+    const el = document.createElement('div');
+    el.className = 'particle';
+    const a = (Math.PI * 2 * i) / n + (Math.random() - 0.5) * 0.6;
+    const d = 25 + Math.random() * 45;
+    const s = 2 + Math.random() * 3;
+    el.style.cssText = `left:${x}px;top:${y}px;width:${s}px;height:${s}px;--dx:${Math.cos(a)*d}px;--dy:${Math.sin(a)*d}px`;
+    $particles.appendChild(el);
+    setTimeout(() => el.remove(), 450);
+  }
+}
+function spawnFloat(x, y, val) {
+  const el = document.createElement('div');
+  el.className = 'float-text';
+  el.textContent = '+' + fmt(val);
+  el.style.cssText = `left:${x + (Math.random()-0.5)*28}px;top:${y - 16}px`;
+  $particles.appendChild(el);
+  setTimeout(() => el.remove(), 700);
+}
+let toastStack = 0;
+function showToast(msg) {
+  const el = document.createElement('div');
+  el.className = 'toast';
+  el.textContent = msg;
+  el.style.top = (1.2 + toastStack * 2.8) + 'rem';
+  toastStack++;
+  document.body.appendChild(el);
+  setTimeout(() => { el.remove(); toastStack = Math.max(0, toastStack - 1); }, 3000);
+}
+
+// === GAME LOGIC ===
+function handleClick(e) {
+  const pw = clickPower();
+  S.energy += pw;
+  S.totalEnergy += pw;
+  S.totalClicks++;
+  const rect = $orbWrap.getBoundingClientRect();
+  const x = (e && e.clientX) ? e.clientX : rect.left + rect.width / 2;
+  const y = (e && e.clientY) ? e.clientY : rect.top + rect.height / 2;
+  spawnParticles(x, y);
+  spawnFloat(x, y, pw);
+  clickBursts.push(performance.now());
+  checkMilestones();
+}
+function buyGen(i) {
+  const cost = genCost(i);
+  if (S.energy < cost) return;
+  S.energy -= cost;
+  S.gens[i]++;
+  flashCard('g' + i);
+}
+function buyAmp(i) {
+  if (S.amps[i] || S.energy < AMPS[i].cost) return;
+  S.energy -= AMPS[i].cost;
+  S.amps[i] = true;
+  flashCard('a' + i);
+}
+function flashCard(id) {
+  const el = document.querySelector(`[data-id="${id}"]`);
+  if (!el) return;
+  el.classList.remove('flash');
+  void el.offsetWidth;
+  el.classList.add('flash');
+}
+function tick(dt) {
+  const e = eps();
+  S.energy += e * dt;
+  S.totalEnergy += e * dt;
+  checkMilestones();
+}
+function checkMilestones() {
+  for (let i = 0; i < MILESTONES.length; i++) {
+    if (S.totalEnergy >= MILESTONES[i].at && !S.milestones.includes(i)) {
+      S.milestones.push(i);
+      showToast(MILESTONES[i].msg);
+    }
+  }
+}
+
+// === CANVAS ORB ===
+function initCanvas() {
+  const dpr = window.devicePixelRatio || 1;
+  const size = canvas.clientWidth;
+  canvas.width = size * dpr;
+  canvas.height = size * dpr;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+
+function drawOrb(time) {
+  const w = canvas.clientWidth, cx = w / 2, cy = w / 2, r = w * 0.37;
+  const intensity = Math.min(1, Math.log10(Math.max(1, eps() + 1)) / 6);
+  ctx.clearRect(0, 0, w, w);
+
+  // Ambient glow
+  const amb = ctx.createRadialGradient(cx, cy, r * 0.2, cx, cy, r * 1.5);
+  amb.addColorStop(0, `rgba(0,232,252,${0.05 + intensity * 0.1})`);
+  amb.addColorStop(0.5, `rgba(139,92,246,${0.02 + intensity * 0.04})`);
+  amb.addColorStop(1, 'transparent');
+  ctx.fillStyle = amb;
+  ctx.fillRect(0, 0, w, w);
+
+  // Core
+  const core = ctx.createRadialGradient(cx - r * 0.15, cy - r * 0.15, 0, cx, cy, r);
+  core.addColorStop(0, `rgba(0,232,252,${0.22 + intensity * 0.18})`);
+  core.addColorStop(0.35, `rgba(139,92,246,${0.1 + intensity * 0.08})`);
+  core.addColorStop(0.75, 'rgba(20,20,50,0.1)');
+  core.addColorStop(1, 'transparent');
+  ctx.fillStyle = core;
+  ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
+
+  // Edge
+  ctx.strokeStyle = `rgba(0,232,252,${0.12 + intensity * 0.18})`;
+  ctx.lineWidth = 1.2;
+  ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.stroke();
+
+  // Arcs
+  const arcN = 3 + Math.floor(intensity * 5);
+  for (let i = 0; i < arcN; i++) {
+    const sp = 0.0004 + intensity * 0.0004;
+    const a = time * sp * (i % 2 ? 1 : -0.7) + (i * Math.PI * 2) / arcN;
+    const ar = Math.abs(r * (0.25 + 0.4 * Math.sin(time * 0.001 + i * 1.7)));
+    const al = 0.12 + intensity * 0.18 + Math.sin(time * 0.002 + i) * 0.06;
+    ctx.strokeStyle = i % 3 === 0
+      ? `rgba(139,92,246,${al})` : `rgba(0,232,252,${al})`;
+    ctx.lineWidth = 0.8 + intensity * 0.8;
+    ctx.beginPath();
+    ctx.arc(cx, cy, ar, a, a + Math.PI * (0.25 + 0.3 * Math.sin(time * 0.0013 + i)));
+    ctx.stroke();
+  }
+
+  // Orbiting dots
+  const dotN = 5 + Math.floor(intensity * 7);
+  ctx.shadowBlur = 5;
+  for (let i = 0; i < dotN; i++) {
+    const sp = 0.0007 + intensity * 0.0004;
+    const a = time * sp * (i % 2 ? 1 : -1) + (i * Math.PI * 2) / dotN;
+    const or2 = r * (0.15 + 0.65 * (i / dotN));
+    const wb = Math.sin(time * 0.003 + i * 2.1) * r * 0.04;
+    const px = cx + Math.cos(a) * (or2 + wb);
+    const py = cy + Math.sin(a) * (or2 + wb);
+    const pr = 1.2 + Math.sin(time * 0.004 + i) * 0.6;
+    const isP = i % 3 === 0;
+    ctx.fillStyle = isP ? 'rgba(139,92,246,0.65)' : 'rgba(0,232,252,0.55)';
+    ctx.shadowColor = isP ? 'rgba(139,92,246,0.4)' : 'rgba(0,232,252,0.4)';
+    ctx.beginPath(); ctx.arc(px, py, pr, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.shadowBlur = 0;
+
+  // Center hotspot
+  const hs = ctx.createRadialGradient(cx - r * 0.08, cy - r * 0.08, 0, cx, cy, r * 0.18);
+  hs.addColorStop(0, `rgba(255,255,255,${0.25 + intensity * 0.2})`);
+  hs.addColorStop(1, 'transparent');
+  ctx.fillStyle = hs;
+  ctx.beginPath(); ctx.arc(cx, cy, r * 0.18, 0, Math.PI * 2); ctx.fill();
+
+  // Click bursts
+  const now = performance.now();
+  for (const t of clickBursts) {
+    const age = now - t;
+    if (age > 350) continue;
+    const p = age / 350;
+    ctx.strokeStyle = `rgba(0,232,252,${0.45 * (1 - p)})`;
+    ctx.lineWidth = 2.5 * (1 - p);
+    ctx.beginPath(); ctx.arc(cx, cy, r * (0.25 + p * 0.95), 0, Math.PI * 2); ctx.stroke();
+  }
+  clickBursts = clickBursts.filter(t => now - t < 350);
+}
+
+// === RENDERING ===
+let displayEnergy = 0, upgradeTimer = 0, genCards = [], ampCards = [];
+
+function buildCards() {
+  $genList.innerHTML = '';
+  genCards = GENS.map((g, i) => {
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.dataset.id = 'g' + i;
+    card.innerHTML = `<div><div class="card-name">${g.name}</div><div class="card-rate">${g.desc}</div></div><div><div class="card-cost"></div><div class="card-count"></div></div>`;
+    card.addEventListener('pointerdown', e => { e.preventDefault(); buyGen(i); });
+    $genList.appendChild(card);
+    return card;
+  });
+  $ampList.innerHTML = '';
+  ampCards = AMPS.map((a, i) => {
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.dataset.id = 'a' + i;
+    card.innerHTML = `<div><div class="card-name">${a.name}</div><div class="card-rate">${a.desc}</div></div><div><div class="card-cost"></div><div class="card-count"></div></div>`;
+    card.addEventListener('pointerdown', e => { e.preventDefault(); buyAmp(i); });
+    $ampList.appendChild(card);
+    return card;
+  });
+}
+
+function renderStats() {
+  const diff = S.energy - displayEnergy;
+  displayEnergy += Math.abs(diff) < 0.5 ? diff : diff * 0.14;
+  $energy.textContent = fmt(Math.max(0, displayEnergy));
+  $eps.textContent = fmt(eps()) + '/s';
+  $click.textContent = '+' + fmt(clickPower()) + '/click';
+  document.title = fmt(S.energy) + ' \u00b7 VOID HARVEST';
+}
+
+function renderUpgrades() {
+  for (let i = 0; i < GENS.length; i++) {
+    const card = genCards[i];
+    const cost = genCost(i);
+    const can = S.energy >= cost;
+    const visible = i === 0 || S.gens[i - 1] > 0 || S.gens[i] > 0;
+    card.style.display = visible ? '' : 'none';
+    card.className = 'card' + (visible ? (can ? ' affordable' : '') : ' dim')
+      + (card.classList.contains('flash') ? ' flash' : '');
+    card.querySelector('.card-cost').textContent = fmt(cost);
+    card.querySelector('.card-count').textContent = S.gens[i] ? 'x' + S.gens[i] : '';
+    card.style.setProperty('--progress', (Math.min(1, S.energy / cost) * 100) + '%');
+  }
+  // Show one teaser after last visible
+  let shown = false;
+  for (let i = 0; i < GENS.length; i++) {
+    const visible = i === 0 || S.gens[i - 1] > 0 || S.gens[i] > 0;
+    if (!visible && !shown) {
+      genCards[i].style.display = '';
+      genCards[i].className = 'card dim';
+      genCards[i].querySelector('.card-cost').textContent = fmt(genCost(i));
+      genCards[i].querySelector('.card-count').textContent = '';
+      genCards[i].style.setProperty('--progress', '0%');
+      shown = true;
+    }
+  }
+  for (let i = 0; i < AMPS.length; i++) {
+    const card = ampCards[i];
+    if (S.amps[i]) {
+      card.className = 'card purchased';
+      card.querySelector('.card-cost').textContent = '\u2713';
+      card.querySelector('.card-count').textContent = '';
+      card.style.setProperty('--progress', '100%');
+    } else {
+      const visible = i === 0 || S.amps[i - 1];
+      card.style.display = visible ? '' : 'none';
+      const can = S.energy >= AMPS[i].cost;
+      card.className = 'card' + (can ? ' affordable' : '');
+      card.querySelector('.card-cost').textContent = fmt(AMPS[i].cost);
+      card.querySelector('.card-count').textContent = '';
+      card.style.setProperty('--progress', (Math.min(1, S.energy / AMPS[i].cost) * 100) + '%');
+      // Show one teaser
+      if (!visible) {
+        let prevPurchased = i > 0 && S.amps[i - 1];
+        if (!prevPurchased) {
+          // find first non-purchased non-visible
+          for (let j = i; j < AMPS.length; j++) {
+            if (!S.amps[j]) {
+              const jVis = j === 0 || S.amps[j - 1];
+              if (!jVis) {
+                ampCards[j].style.display = j === i ? '' : 'none';
+                if (j === i) {
+                  ampCards[j].className = 'card dim';
+                  ampCards[j].querySelector('.card-cost').textContent = fmt(AMPS[j].cost);
+                  ampCards[j].style.setProperty('--progress', '0%');
+                }
+              }
+              break;
+            }
+          }
+          break;
+        }
+      }
+    }
+  }
+}
+
+// === SAVE / LOAD ===
+const SAVE_KEY = 'voidharvest_v1';
+function save() {
+  S.lastSave = Date.now();
+  localStorage.setItem(SAVE_KEY, JSON.stringify(S));
+  $saveInd.classList.add('on');
+  setTimeout(() => $saveInd.classList.remove('on'), 1200);
+}
+function load() {
+  try {
+    const raw = localStorage.getItem(SAVE_KEY);
+    if (!raw) return false;
+    const d = JSON.parse(raw);
+    S.energy = d.energy || 0;
+    S.totalEnergy = d.totalEnergy || 0;
+    S.totalClicks = d.totalClicks || 0;
+    S.gens = d.gens || GENS.map(() => 0);
+    S.amps = d.amps || AMPS.map(() => false);
+    S.milestones = d.milestones || [];
+    // Pad if new generators/amplifiers added
+    while (S.gens.length < GENS.length) S.gens.push(0);
+    while (S.amps.length < AMPS.length) S.amps.push(false);
+    // Offline progress
+    if (d.lastSave) {
+      const elapsed = (Date.now() - d.lastSave) / 1000;
+      if (elapsed > 30) {
+        const earned = eps() * elapsed;
+        if (earned > 0) {
+          S.energy += earned;
+          S.totalEnergy += earned;
+          showOffline(earned, elapsed);
+        }
+      }
+    }
+    displayEnergy = S.energy;
+    return true;
+  } catch (e) { return false; }
+}
+function showOffline(energy, secs) {
+  const h = Math.floor(secs / 3600), m = Math.floor((secs % 3600) / 60);
+  const timeStr = h > 0 ? `${h}h ${m}m` : `${m}m`;
+  const el = document.createElement('div');
+  el.className = 'offline-overlay';
+  el.innerHTML = `<div class="offline-box">
+    <h2>WELCOME BACK</h2>
+    <div class="away">You were away for ${timeStr}</div>
+    <div class="amt">+${fmt(energy)}</div>
+    <div class="lbl">VOID ENERGY HARVESTED</div>
+    <button onclick="this.closest('.offline-overlay').remove()">COLLECT</button>
+  </div>`;
+  document.body.appendChild(el);
+}
+function resetGame() {
+  if (!confirm('Reset all progress? This cannot be undone.')) return;
+  localStorage.removeItem(SAVE_KEY);
+  S = {
+    energy: 0, totalEnergy: 0, totalClicks: 0,
+    gens: GENS.map(() => 0), amps: AMPS.map(() => false),
+    milestones: [], lastSave: Date.now(),
+  };
+  displayEnergy = 0;
+  renderUpgrades();
+}
+
+// === INPUT ===
+$orbWrap.addEventListener('pointerdown', e => { e.preventDefault(); handleClick(e); });
+document.addEventListener('keydown', e => {
+  if (e.target !== document.body) return;
+  if (e.code === 'Space') {
+    e.preventDefault();
+    const rect = $orbWrap.getBoundingClientRect();
+    handleClick({ clientX: rect.left + rect.width / 2, clientY: rect.top + rect.height / 2 });
+  }
+  const n = parseInt(e.key);
+  if (n >= 1 && n <= GENS.length) buyGen(n - 1);
+});
+
+// === GAME LOOP ===
+let lastTick = Date.now();
+setInterval(() => {
+  const now = Date.now();
+  const dt = Math.min((now - lastTick) / 1000, 0.5);
+  lastTick = now;
+  tick(dt);
+}, 50);
+
+function renderLoop(time) {
+  renderStats();
+  drawOrb(time);
+  upgradeTimer++;
+  if (upgradeTimer >= 8) { upgradeTimer = 0; renderUpgrades(); }
+  requestAnimationFrame(renderLoop);
+}
+
+// Auto-save every 30s
+setInterval(save, 30000);
+window.addEventListener('beforeunload', save);
+
+// === INIT ===
+initCanvas();
+window.addEventListener('resize', initCanvas);
+buildCards();
+load();
+renderUpgrades();
+requestAnimationFrame(renderLoop);
+</script>
+</body>
+</html>
