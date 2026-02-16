@@ -1,0 +1,1388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ore Drifter</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Michroma&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0a0a12;
+  --surface: #12121e;
+  --surface-2: #1a1a2e;
+  --surface-3: #22223a;
+  --accent: #f0a040;
+  --accent-dim: rgba(240,160,64,0.15);
+  --accent2: #40c8f0;
+  --accent2-dim: rgba(64,200,240,0.15);
+  --danger: #f04040;
+  --danger-dim: rgba(240,64,64,0.15);
+  --success: #40d080;
+  --text: #c8c8d8;
+  --text-dim: #606078;
+  --text-bright: #e8e8f0;
+  --border: #2a2a40;
+}
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'DM Mono', monospace;
+  font-size: 13px;
+  line-height: 1.5;
+  min-height: 100vh;
+}
+.top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.6rem 1rem;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+.top-bar .title {
+  font-family: 'Michroma', sans-serif;
+  font-size: 0.75rem;
+  letter-spacing: 0.3em;
+  color: var(--accent);
+}
+.top-bar .credits {
+  font-weight: 500;
+  color: var(--accent);
+}
+.top-bar .location {
+  color: var(--text-dim);
+  font-size: 0.7rem;
+}
+.main {
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  height: calc(100vh - 2.5rem);
+}
+.side-panel {
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  padding: 0.8rem;
+  overflow-y: auto;
+}
+.context-panel {
+  padding: 0.8rem;
+  overflow-y: auto;
+}
+.section { margin-bottom: 1rem; }
+.section-title {
+  font-size: 0.65rem;
+  letter-spacing: 0.15em;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  margin-bottom: 0.4rem;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 0.2rem;
+}
+.bar-container {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  height: 18px;
+  position: relative;
+  margin: 0.3rem 0;
+}
+.bar-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+.bar-label {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.6rem;
+  color: var(--text-bright);
+  text-shadow: 0 0 4px rgba(0,0,0,0.8);
+}
+.cargo-bar .bar-fill { background: var(--accent); }
+.shield-bar .bar-fill { background: var(--accent2); }
+.equip-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.7rem;
+  padding: 0.15rem 0;
+}
+.equip-label { color: var(--text-dim); }
+.equip-value { color: var(--text); }
+.consumable-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.7rem;
+  padding: 0.1rem 0;
+}
+.btn {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 0.35rem 0.7rem;
+  font-family: 'DM Mono', monospace;
+  font-size: 0.7rem;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: all 0.1s;
+}
+.btn:hover { background: var(--surface-3); border-color: var(--accent); }
+.btn:disabled { opacity: 0.3; cursor: default; border-color: var(--border); }
+.btn-accent {
+  background: var(--accent-dim);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.btn-accent:hover { background: rgba(240,160,64,0.25); }
+.btn-row { display: flex; gap: 0.3rem; flex-wrap: wrap; margin: 0.3rem 0; }
+.nav-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.4rem 0.5rem;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  margin-bottom: 0.3rem;
+  cursor: pointer;
+  transition: all 0.1s;
+}
+.nav-item:hover { border-color: var(--accent); }
+.nav-item.disabled { opacity: 0.35; cursor: default; border-color: var(--border); }
+.nav-name { font-size: 0.75rem; }
+.nav-info { font-size: 0.6rem; color: var(--text-dim); }
+.ore-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.3rem 0.4rem;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.7rem;
+}
+.ore-row:last-child { border-bottom: none; }
+.ore-name { min-width: 70px; }
+.ore-qty { color: var(--text-dim); min-width: 30px; text-align: right; }
+.ore-price { min-width: 50px; text-align: right; }
+.trend-up { color: var(--success); }
+.trend-down { color: var(--danger); }
+.trend-stable { color: var(--text-dim); }
+.travel-progress {
+  text-align: center;
+  padding: 2rem;
+}
+.travel-progress .eta {
+  font-size: 1.2rem;
+  color: var(--accent);
+  margin: 0.5rem 0;
+}
+.mining-status {
+  padding: 0.3rem 0;
+}
+.mining-stat {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.7rem;
+  padding: 0.1rem 0;
+}
+.rocks-display {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  min-height: 32px;
+  padding: 0.4rem;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  margin: 0.4rem 0;
+}
+.rock {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  animation: rockFloat 2s ease-in-out infinite;
+}
+.rock.pulling { animation: rockPull 0.5s ease-in forwards; }
+@keyframes rockFloat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}
+@keyframes rockPull {
+  to { transform: scale(0); opacity: 0; }
+}
+.refine-timer {
+  text-align: center;
+  padding: 1rem;
+  font-size: 0.9rem;
+  color: var(--accent2);
+}
+.version {
+  position: fixed;
+  bottom: 4px;
+  right: 8px;
+  font-size: 0.55rem;
+  color: var(--text-dim);
+  opacity: 0.5;
+}
+.save-indicator {
+  position: fixed;
+  bottom: 4px;
+  left: 8px;
+  font-size: 0.55rem;
+  color: var(--success);
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+.save-indicator.show { opacity: 0.7; }
+
+/* Responsive */
+@media (max-width: 700px) {
+  .main {
+    grid-template-columns: 1fr;
+    height: auto;
+  }
+  .side-panel {
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+  }
+}
+
+/* Test mode */
+.test-results {
+  padding: 1rem;
+  font-size: 0.75rem;
+  max-width: 800px;
+  margin: 0 auto;
+}
+.test-pass { color: var(--success); }
+.test-fail { color: var(--danger); }
+.test-summary {
+  font-size: 0.9rem;
+  padding: 0.5rem 0;
+  border-top: 1px solid var(--border);
+  margin-top: 0.5rem;
+}
+</style>
+</head>
+<body>
+<div id="game">
+  <div class="top-bar">
+    <span class="credits" id="credits">0 cr</span>
+    <span class="title">ORE DRIFTER</span>
+    <span class="location" id="location">Mining Outpost</span>
+  </div>
+  <div class="main">
+    <div class="side-panel" id="side-panel">
+      <div class="section">
+        <div class="section-title">Cargo</div>
+        <div class="bar-container cargo-bar">
+          <div class="bar-fill" id="cargo-bar-fill" style="width:0%"></div>
+          <div class="bar-label" id="cargo-bar-label">0 / 50</div>
+        </div>
+        <div id="cargo-list"></div>
+      </div>
+      <div class="section" id="shield-section" style="display:none">
+        <div class="section-title">Shield</div>
+        <div class="bar-container shield-bar">
+          <div class="bar-fill" id="shield-bar-fill" style="width:100%"></div>
+          <div class="bar-label" id="shield-bar-label">100 / 100</div>
+        </div>
+      </div>
+      <div class="section">
+        <div class="section-title">Equipment</div>
+        <div id="equip-list"></div>
+      </div>
+      <div class="section">
+        <div class="section-title">Consumables</div>
+        <div id="consumable-list"></div>
+      </div>
+    </div>
+    <div class="context-panel" id="context-panel"></div>
+  </div>
+</div>
+<div class="version">v0.1</div>
+<div class="save-indicator" id="save-indicator">saved</div>
+
+<div id="test-container" style="display:none">
+  <div class="test-results" id="test-results"></div>
+</div>
+
+<script>
+// ═══════════════════════════════════════
+// CONSTANTS
+// ═══════════════════════════════════════
+
+const VERSION = '0.1';
+const SAVE_KEY = 'oredrifter_v1';
+
+const ORES = [
+  { id: 'iron',    name: 'Iron',        base: 4,   color: '#a0a0b0' },
+  { id: 'copper',  name: 'Copper',      base: 10,  color: '#d08040' },
+  { id: 'titanium',name: 'Titanium',    base: 28,  color: '#60a0d0' },
+  { id: 'crystal', name: 'Crystal',     base: 75,  color: '#c060e0' },
+  { id: 'void',    name: 'Void Matter', base: 200, color: '#4020a0' },
+];
+const ORE_IDS = ORES.map(o => o.id);
+
+const FIELDS = [
+  { id: 'dust_belt',     name: 'Dust Belt',     danger: 0, mineRate: 1.0, ores: { iron: 0.7, copper: 0.3 } },
+  { id: 'rocky_reach',   name: 'Rocky Reach',   danger: 0, mineRate: 1.1, ores: { iron: 0.45, copper: 0.45, titanium: 0.1 } },
+  { id: 'iron_nebula',   name: 'Iron Nebula',   danger: 1, mineRate: 1.2, ores: { iron: 0.15, copper: 0.25, titanium: 0.55, crystal: 0.05 } },
+  { id: 'crystal_web',   name: 'Crystal Web',   danger: 2, mineRate: 1.0, ores: { copper: 0.1, titanium: 0.3, crystal: 0.55, void: 0.05 } },
+  { id: 'shattered_rim', name: 'Shattered Rim', danger: 3, mineRate: 0.9, ores: { titanium: 0.2, crystal: 0.45, void: 0.35 } },
+  { id: 'void_edge',     name: 'Void Edge',     danger: 4, mineRate: 0.8, ores: { crystal: 0.15, void: 0.85 } },
+];
+
+const STATIONS = [
+  { id: 'mining_outpost',  name: 'Mining Outpost',     priceMod: { iron: 1.0, copper: 1.0, titanium: 0.9, crystal: 0.8, void: 0.7 }, consumableMod: 1.0, equipStock: [0,1] },
+  { id: 'trading_hub',     name: 'Trading Hub',        priceMod: { iron: 1.1, copper: 1.1, titanium: 1.1, crystal: 1.0, void: 0.9 }, consumableMod: 1.1, equipStock: [0,1,2] },
+  { id: 'equipment_depot', name: 'Equipment Depot',    priceMod: { iron: 0.7, copper: 0.7, titanium: 0.7, crystal: 0.6, void: 0.5 }, consumableMod: 1.0, equipStock: [0,1,2,3] },
+  { id: 'black_market',    name: 'Black Market',       priceMod: { iron: 0.8, copper: 0.9, titanium: 1.2, crystal: 1.4, void: 1.6 }, consumableMod: 1.5, equipStock: [0,1,2] },
+  { id: 'deep_space_refinery', name: 'Deep Space Refinery', priceMod: { iron: 0.9, copper: 0.9, titanium: 1.0, crystal: 1.1, void: 1.2 }, consumableMod: 1.2, equipStock: [0,1] },
+];
+
+// Ring layout: Fields and stations interleaved
+// Index: 0=Mining Outpost, 1=Dust Belt, 2=Trading Hub, 3=Rocky Reach, 4=Equipment Depot,
+//        5=Iron Nebula, 6=Black Market, 7=Crystal Web, 8=Deep Space Refinery, 9=Shattered Rim, 10=Void Edge
+const RING = [
+  { type: 'station', ref: 'mining_outpost' },
+  { type: 'field',   ref: 'dust_belt' },
+  { type: 'station', ref: 'trading_hub' },
+  { type: 'field',   ref: 'rocky_reach' },
+  { type: 'station', ref: 'equipment_depot' },
+  { type: 'field',   ref: 'iron_nebula' },
+  { type: 'station', ref: 'black_market' },
+  { type: 'field',   ref: 'crystal_web' },
+  { type: 'station', ref: 'deep_space_refinery' },
+  { type: 'field',   ref: 'shattered_rim' },
+  { type: 'field',   ref: 'void_edge' },
+];
+
+const EQUIP = {
+  drill: [
+    { name: 'Basic Drill',    price: 0,     speed: 1.0, quality: 0 },
+    { name: 'Plasma Drill',   price: 500,   speed: 2.0, quality: 0.1 },
+    { name: 'Laser Cutter',   price: 4000,  speed: 3.5, quality: 0.2 },
+    { name: 'Quantum Bore',   price: 25000, speed: 6.0, quality: 0.35 },
+  ],
+  beam: [
+    { name: 'Magnetic Grapple', price: 0,     speed: 0.5, capacity: 2 },
+    { name: 'Tow Beam',         price: 400,   speed: 1.0, capacity: 4 },
+    { name: 'Gravity Well',     price: 3000,  speed: 2.0, capacity: 8 },
+    { name: 'Singularity Lens', price: 18000, speed: 4.0, capacity: 15 },
+  ],
+  engine: [
+    { name: 'Ion Thruster',    price: 0,     speedMult: 1.0, fuelEff: 1.0 },
+    { name: 'Plasma Drive',    price: 600,   speedMult: 1.5, fuelEff: 0.85 },
+    { name: 'Warp Coil',       price: 5000,  speedMult: 2.5, fuelEff: 0.7 },
+    { name: 'Void Skipper',    price: 30000, speedMult: 4.0, fuelEff: 0.5 },
+  ],
+  shield: [
+    { name: 'None',            price: 0,     hp: 0,   reduction: 0,   minDanger: 0 },
+    { name: 'Deflector',       price: 300,   hp: 100, reduction: 0.2, minDanger: 1 },
+    { name: 'Phase Barrier',   price: 2500,  hp: 250, reduction: 0.4, minDanger: 2 },
+    { name: 'Void Ward',       price: 15000, hp: 500, reduction: 0.6, minDanger: 4 },
+  ],
+  cargo: [
+    { name: 'Basic Hold',     price: 0,     capacity: 50 },
+    { name: 'Expanded Hold',  price: 350,   capacity: 120 },
+    { name: 'Freight Bay',    price: 3500,  capacity: 300 },
+    { name: 'Deep Storage',   price: 20000, capacity: 700 },
+  ],
+};
+
+const CONSUMABLE_BASE_PRICES = { charges: 2, fuel: 3, repairKits: 15 };
+
+const ROCK_DRIFT_TIME = 8; // seconds before a loose rock disappears
+const BASE_DRILL_INTERVAL = 2; // seconds
+const TRAVEL_TIME_PER_HOP = 12; // seconds
+const FUEL_PER_HOP = 2;
+const DEMAND_RECOVERY_HALF_LIFE = 7200; // 2hr in seconds
+const DEMAND_MIN = 0.4;
+const DEMAND_DROP_PER_UNIT = 0.005;
+const REFINE_TIME = 90; // seconds
+const REFINE_BONUS = 1.4;
+const SHIELD_DMG_RATE = 0.1; // per danger per second (before reduction)
+
+// ═══════════════════════════════════════
+// PURE GAME LOGIC
+// ═══════════════════════════════════════
+
+function fmt(n) {
+  if (n >= 1e6) return (n / 1e6).toFixed(1) + 'M';
+  if (n >= 1e4) return (n / 1e3).toFixed(1) + 'K';
+  return n % 1 === 0 ? String(n) : n.toFixed(1);
+}
+
+function ringIndex(locId) {
+  return RING.findIndex(r => r.ref === locId);
+}
+
+function distance(a, b) {
+  const ia = typeof a === 'number' ? a : ringIndex(a);
+  const ib = typeof b === 'number' ? b : ringIndex(b);
+  if (ia < 0 || ib < 0) return Infinity;
+  const n = RING.length;
+  const d = Math.abs(ia - ib);
+  return Math.min(d, n - d);
+}
+
+function getField(id) { return FIELDS.find(f => f.id === id); }
+function getStation(id) { return STATIONS.find(s => s.id === id); }
+function getLocationType(id) {
+  const r = RING.find(r => r.ref === id);
+  return r ? r.type : null;
+}
+function getLocationName(id) {
+  const f = getField(id);
+  if (f) return f.name;
+  const s = getStation(id);
+  if (s) return s.name;
+  return id;
+}
+
+function cargoTotal(cargo) {
+  return ORE_IDS.reduce((sum, id) => sum + (cargo[id] || 0), 0);
+}
+
+function cargoCapacity(state) {
+  return EQUIP.cargo[state.equipment.cargo].capacity;
+}
+
+function shieldMaxHp(state) {
+  return EQUIP.shield[state.equipment.shield].hp;
+}
+
+function shieldMinDanger(tier) {
+  return EQUIP.shield[tier].minDanger;
+}
+
+function canEnterField(state, fieldId) {
+  const field = getField(fieldId);
+  if (!field) return false;
+  if (field.danger === 0) return true;
+  const shield = EQUIP.shield[state.equipment.shield];
+  return shield.minDanger >= field.danger;
+}
+
+function mineRock(fieldOres, drillQuality, rng) {
+  // drillQuality shifts probability toward rarer ores
+  const entries = Object.entries(fieldOres);
+  // Build shifted weights
+  const shifted = entries.map(([ore, weight]) => {
+    const oreIdx = ORE_IDS.indexOf(ore);
+    const rarity = oreIdx / (ORE_IDS.length - 1); // 0=common, 1=rare
+    const boost = 1 + drillQuality * rarity * 3;
+    return [ore, weight * boost];
+  });
+  const total = shifted.reduce((s, [, w]) => s + w, 0);
+  let r = rng * total;
+  for (const [ore, w] of shifted) {
+    r -= w;
+    if (r <= 0) return ore;
+  }
+  return entries[entries.length - 1][0];
+}
+
+function updateBeam(looseRocks, beam, dt) {
+  const collected = [];
+  const lost = [];
+  const remaining = [];
+
+  // Sort by age descending (oldest first priority for beam)
+  const sorted = [...looseRocks].sort((a, b) => b.age - a.age);
+  let pulling = 0;
+
+  for (const rock of sorted) {
+    const r = { ...rock, age: rock.age + dt };
+    if (r.pulling) {
+      r.pullProgress += beam.speed * dt;
+      if (r.pullProgress >= 1) {
+        collected.push(r);
+      } else {
+        pulling++;
+        remaining.push(r);
+      }
+    } else if (pulling < beam.capacity) {
+      r.pulling = true;
+      r.pullProgress = 0;
+      pulling++;
+      remaining.push(r);
+    } else if (r.age >= ROCK_DRIFT_TIME) {
+      lost.push(r);
+    } else {
+      remaining.push(r);
+    }
+  }
+
+  return { collected, lost, remaining };
+}
+
+function calcOrePrice(oreId, stationId, demand) {
+  const ore = ORES.find(o => o.id === oreId);
+  const station = getStation(stationId);
+  if (!ore || !station) return 0;
+  const demandMult = demand?.[stationId]?.[oreId] ?? 1;
+  return Math.round(ore.base * (station.priceMod[oreId] || 1) * demandMult * 10) / 10;
+}
+
+function calcTravelTime(from, to, engineSpeedMult) {
+  const hops = distance(from, to);
+  return hops * TRAVEL_TIME_PER_HOP / engineSpeedMult;
+}
+
+function calcTravelFuel(from, to, engineFuelEff) {
+  const hops = distance(from, to);
+  return Math.ceil(hops * FUEL_PER_HOP * engineFuelEff);
+}
+
+function updateDemand(demand, dt) {
+  const decay = Math.pow(0.5, dt / DEMAND_RECOVERY_HALF_LIFE);
+  const next = {};
+  for (const sid in demand) {
+    next[sid] = {};
+    for (const oid in demand[sid]) {
+      const cur = demand[sid][oid];
+      // Recover toward 1.0
+      next[sid][oid] = 1 - (1 - cur) * decay;
+    }
+  }
+  return next;
+}
+
+function sellOre(state, oreId, qty, stationId) {
+  const actual = Math.min(qty, state.cargo[oreId] || 0);
+  if (actual <= 0) return state;
+  const price = calcOrePrice(oreId, stationId, state.demand);
+  const totalPrice = Math.round(price * actual * 10) / 10;
+
+  const newCargo = { ...state.cargo, [oreId]: (state.cargo[oreId] || 0) - actual };
+  const newDemand = { ...state.demand };
+  if (!newDemand[stationId]) newDemand[stationId] = {};
+  const curDemand = newDemand[stationId][oreId] ?? 1;
+  newDemand[stationId] = { ...newDemand[stationId], [oreId]: Math.max(DEMAND_MIN, curDemand - actual * DEMAND_DROP_PER_UNIT) };
+
+  return { ...state, cargo: newCargo, credits: state.credits + totalPrice, demand: newDemand };
+}
+
+function buyConsumable(state, type, qty, stationId) {
+  const station = getStation(stationId);
+  if (!station) return state;
+  const basePrice = CONSUMABLE_BASE_PRICES[type];
+  const price = Math.round(basePrice * station.consumableMod * 10) / 10;
+  const affordable = Math.floor(state.credits / price);
+  const actual = Math.min(qty, affordable);
+  if (actual <= 0) return state;
+  const cost = Math.round(price * actual * 10) / 10;
+  return { ...state, credits: state.credits - cost, [type]: state[type] + actual };
+}
+
+function buyEquipment(state, category, tier, price) {
+  if (state.credits < price) return state;
+  if (state.equipment[category] >= tier) return state;
+  const newEquip = { ...state.equipment, [category]: tier };
+  let newState = { ...state, credits: state.credits - price, equipment: newEquip };
+  // Reset shield HP to new max when upgrading shield
+  if (category === 'shield') {
+    newState.shieldHp = EQUIP.shield[tier].hp;
+  }
+  return newState;
+}
+
+function drillInterval(state, fieldId) {
+  const field = getField(fieldId);
+  if (!field) return Infinity;
+  const drill = EQUIP.drill[state.equipment.drill];
+  return BASE_DRILL_INTERVAL / (drill.speed * field.mineRate);
+}
+
+function tickMining(state, dt) {
+  if (state.status !== 'mining') return state;
+  const field = getField(state.location);
+  if (!field) return state;
+
+  const cap = cargoCapacity(state);
+  let s = { ...state, looseRocks: [...state.looseRocks] };
+  const drill = EQUIP.drill[s.equipment.drill];
+  const beam = EQUIP.beam[s.equipment.beam];
+
+  // Accumulate drill timer
+  const interval = drillInterval(s, s.location);
+  s.drillTimer = (s.drillTimer || 0) + dt;
+
+  // Spawn rocks from drill
+  while (s.drillTimer >= interval && s.charges > 0 && cargoTotal(s.cargo) + s.looseRocks.filter(r => r.pulling).length < cap) {
+    s.drillTimer -= interval;
+    s.charges--;
+    const ore = mineRock(field.ores, drill.quality, Math.random());
+    s.looseRocks.push({ ore, age: 0, pulling: false, pullProgress: 0 });
+  }
+
+  // Update beam
+  const beamResult = updateBeam(s.looseRocks, { speed: beam.speed, capacity: beam.capacity }, dt);
+  s.looseRocks = beamResult.remaining;
+  s.rocksLost = (s.rocksLost || 0) + beamResult.lost.length;
+
+  // Add collected rocks to cargo
+  const newCargo = { ...s.cargo };
+  for (const rock of beamResult.collected) {
+    if (cargoTotal(newCargo) < cap) {
+      newCargo[rock.ore] = (newCargo[rock.ore] || 0) + 1;
+    }
+  }
+  s.cargo = newCargo;
+
+  // Stop mining if no charges and no loose rocks
+  if (s.charges <= 0 && s.looseRocks.length === 0) {
+    s.status = 'docked_field';
+  }
+  // Stop if cargo full and no loose rocks being pulled
+  if (cargoTotal(s.cargo) >= cap && s.looseRocks.filter(r => r.pulling).length === 0) {
+    s.status = 'docked_field';
+  }
+
+  return s;
+}
+
+function tickTravel(state, dt) {
+  if (state.status !== 'traveling') return state;
+  let s = { ...state };
+  s.travelProgress += dt;
+  if (s.travelProgress >= s.travelTime) {
+    s.location = s.travelDest;
+    s.status = getLocationType(s.travelDest) === 'station' ? 'docked_station' : 'docked_field';
+    s.travelDest = null;
+    s.travelTime = 0;
+    s.travelProgress = 0;
+  }
+  return s;
+}
+
+function tickShieldDamage(state, dt) {
+  if (state.status !== 'mining') return state;
+  const field = getField(state.location);
+  if (!field || field.danger === 0) return state;
+  const shield = EQUIP.shield[state.equipment.shield];
+  if (shield.hp === 0) return state; // no shield equipped — shouldn't be here
+
+  const dmg = field.danger * (1 - shield.reduction) * SHIELD_DMG_RATE * dt;
+  let s = { ...state, shieldHp: state.shieldHp - dmg };
+
+  if (s.shieldHp <= 0) {
+    s.shieldHp = 0;
+    s.status = 'emergency_jump';
+  }
+  return s;
+}
+
+function tickRefine(state, dt) {
+  if (state.status !== 'refining') return state;
+  let s = { ...state, refineProgress: state.refineProgress + dt };
+  if (s.refineProgress >= REFINE_TIME) {
+    s.status = 'docked_station';
+    s.refineBonus = true;
+    s.refineProgress = 0;
+  }
+  return s;
+}
+
+function useRepairKit(state) {
+  if (state.repairKits <= 0) return state;
+  const maxHp = shieldMaxHp(state);
+  if (maxHp === 0 || state.shieldHp >= maxHp) return state;
+  return { ...state, repairKits: state.repairKits - 1, shieldHp: Math.min(maxHp, state.shieldHp + maxHp * 0.4) };
+}
+
+function startTravel(state, destId) {
+  const engine = EQUIP.engine[state.equipment.engine];
+  const fuelCost = calcTravelFuel(state.location, destId, engine.fuelEff);
+  if (state.fuel < fuelCost) return state;
+  const travelTime = calcTravelTime(state.location, destId, engine.speedMult);
+  return {
+    ...state,
+    status: 'traveling',
+    travelDest: destId,
+    travelTime,
+    travelProgress: 0,
+    fuel: state.fuel - fuelCost,
+    looseRocks: [],
+    drillTimer: 0,
+  };
+}
+
+function startMining(state) {
+  if (getLocationType(state.location) !== 'field') return state;
+  if (state.charges <= 0) return state;
+  if (cargoTotal(state.cargo) >= cargoCapacity(state)) return state;
+  const field = getField(state.location);
+  if (field.danger > 0 && !canEnterField(state, state.location)) return state;
+  return { ...state, status: 'mining', looseRocks: [], drillTimer: 0, rocksLost: 0 };
+}
+
+function stopMining(state) {
+  return { ...state, status: 'docked_field', looseRocks: [], drillTimer: 0 };
+}
+
+function emergencyJump(state) {
+  // Find nearest station
+  const curIdx = ringIndex(state.location);
+  let nearest = null, nearestDist = Infinity;
+  for (const s of STATIONS) {
+    const d = distance(state.location, s.id);
+    if (d < nearestDist) { nearestDist = d; nearest = s.id; }
+  }
+  return {
+    ...state,
+    status: 'docked_station',
+    location: nearest || 'mining_outpost',
+    looseRocks: [],
+    drillTimer: 0,
+    shieldHp: 0,
+  };
+}
+
+function startRefine(state) {
+  if (state.location !== 'deep_space_refinery') return state;
+  if (cargoTotal(state.cargo) === 0) return state;
+  return { ...state, status: 'refining', refineProgress: 0 };
+}
+
+// ═══════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════
+
+function freshState() {
+  return {
+    credits: 0,
+    location: 'mining_outpost',
+    status: 'docked_station', // docked_station, docked_field, mining, traveling, refining, emergency_jump
+    cargo: { iron: 0, copper: 0, titanium: 0, crystal: 0, void: 0 },
+    equipment: { drill: 0, beam: 0, engine: 0, shield: 0, cargo: 0 },
+    charges: 30,
+    fuel: 15,
+    repairKits: 0,
+    shieldHp: 0,
+    demand: {},
+    looseRocks: [],
+    drillTimer: 0,
+    rocksLost: 0,
+    travelDest: null,
+    travelTime: 0,
+    travelProgress: 0,
+    refineProgress: 0,
+    refineBonus: false,
+    lastTick: Date.now(),
+    totalEarned: 0,
+    totalMined: 0,
+    totalLost: 0,
+    playTime: 0,
+  };
+}
+
+function saveState(state) {
+  try {
+    localStorage.setItem(SAVE_KEY, JSON.stringify(state));
+    const el = document.getElementById('save-indicator');
+    if (el) { el.classList.add('show'); setTimeout(() => el.classList.remove('show'), 1500); }
+  } catch(e) {}
+}
+
+function loadState() {
+  try {
+    const raw = localStorage.getItem(SAVE_KEY);
+    if (!raw) return freshState();
+    const s = JSON.parse(raw);
+    // Merge with fresh state to fill missing keys
+    return { ...freshState(), ...s };
+  } catch(e) { return freshState(); }
+}
+
+// ═══════════════════════════════════════
+// TEST HARNESS
+// ═══════════════════════════════════════
+
+function runTests() {
+  document.getElementById('game').style.display = 'none';
+  document.getElementById('test-container').style.display = 'block';
+
+  const results = [];
+  let passed = 0, failed = 0;
+
+  function assert(name, condition) {
+    if (condition) { passed++; results.push({ name, pass: true }); }
+    else { failed++; results.push({ name, pass: false }); }
+  }
+
+  function assertClose(name, actual, expected, tolerance) {
+    tolerance = tolerance || 0.01;
+    assert(name + ` (${actual} ≈ ${expected})`, Math.abs(actual - expected) <= tolerance);
+  }
+
+  // distance tests
+  assert('distance: same location = 0', distance('mining_outpost', 'mining_outpost') === 0);
+  assert('distance: adjacent = 1', distance('mining_outpost', 'dust_belt') === 1);
+  assert('distance: wrapping shortest path', distance('mining_outpost', 'void_edge') === 1);
+  assert('distance: across ring', distance('dust_belt', 'deep_space_refinery') === 4);
+  assert('distance: symmetry', distance('trading_hub', 'black_market') === distance('black_market', 'trading_hub'));
+
+  // mineRock tests
+  const dustOres = FIELDS[0].ores; // iron 0.7, copper 0.3
+  assert('mineRock: returns valid ore (low rng)', ['iron', 'copper'].includes(mineRock(dustOres, 0, 0.1)));
+  assert('mineRock: returns valid ore (high rng)', ['iron', 'copper'].includes(mineRock(dustOres, 0, 0.9)));
+  // With quality=0, iron cutoff at 0.7 — rng 0.5 → iron, rng 0.8 → copper
+  assert('mineRock: iron at rng 0.5 q0', mineRock(dustOres, 0, 0.5) === 'iron');
+  assert('mineRock: copper at rng 0.8 q0', mineRock(dustOres, 0, 0.8) === 'copper');
+  // Quality shifts toward rare
+  const voidOres = FIELDS[5].ores; // crystal 0.15, void 0.85
+  const counts = { crystal: 0, void: 0 };
+  for (let i = 0; i < 1000; i++) counts[mineRock(voidOres, 0.35, Math.random())]++;
+  assert('mineRock: quality shifts distribution (void > 80% with q=0.35)', counts.void > 800);
+
+  // updateBeam tests
+  const rocks = [
+    { ore: 'iron', age: 0, pulling: false, pullProgress: 0 },
+    { ore: 'iron', age: 0, pulling: false, pullProgress: 0 },
+    { ore: 'iron', age: 0, pulling: false, pullProgress: 0 },
+  ];
+  let br = updateBeam(rocks, { speed: 1.0, capacity: 2 }, 0.5);
+  assert('updateBeam: only 2 rocks pulled (capacity 2)', br.remaining.filter(r => r.pulling).length === 2);
+  assert('updateBeam: 1 rock floating', br.remaining.filter(r => !r.pulling).length === 1);
+  assert('updateBeam: no lost yet', br.lost.length === 0);
+
+  // Rocks drift and get lost
+  const oldRock = [{ ore: 'iron', age: 7.5, pulling: false, pullProgress: 0 }];
+  br = updateBeam(oldRock, { speed: 1.0, capacity: 0 }, 1);
+  assert('updateBeam: rock lost after drift time', br.lost.length === 1);
+
+  // Beam completes pulling
+  const pullingRock = [{ ore: 'copper', age: 0, pulling: true, pullProgress: 0.9 }];
+  br = updateBeam(pullingRock, { speed: 1.0, capacity: 2 }, 0.2);
+  assert('updateBeam: rock collected when pull complete', br.collected.length === 1);
+  assert('updateBeam: collected rock is copper', br.collected[0].ore === 'copper');
+
+  // calcOrePrice tests
+  assertClose('calcOrePrice: iron at outpost demand=1', calcOrePrice('iron', 'mining_outpost', {}), 4);
+  assertClose('calcOrePrice: iron at trading hub demand=1', calcOrePrice('iron', 'trading_hub', {}), 4.4);
+  const demandState = { black_market: { void: 0.5 } };
+  assertClose('calcOrePrice: void at black market demand=0.5', calcOrePrice('void', 'black_market', demandState), 160);
+
+  // calcTravelTime/Fuel tests
+  assertClose('calcTravelTime: 2 hops, speed 1', calcTravelTime('mining_outpost', 'trading_hub', 1.0), 24);
+  assertClose('calcTravelTime: 2 hops, speed 2', calcTravelTime('mining_outpost', 'trading_hub', 2.0), 12);
+  assert('calcTravelFuel: 2 hops, eff 1', calcTravelFuel('mining_outpost', 'trading_hub', 1.0) === 4);
+  assert('calcTravelFuel: 2 hops, eff 0.5', calcTravelFuel('mining_outpost', 'trading_hub', 0.5) === 2);
+
+  // sellOre tests
+  let ts = freshState();
+  ts.cargo.iron = 10;
+  ts.location = 'mining_outpost';
+  let sold = sellOre(ts, 'iron', 5, 'mining_outpost');
+  assert('sellOre: cargo reduced', sold.cargo.iron === 5);
+  assertClose('sellOre: credits increased', sold.credits, 20);
+  assert('sellOre: demand dropped', sold.demand.mining_outpost.iron < 1);
+
+  // sellOre: can't sell more than you have
+  sold = sellOre(ts, 'iron', 100, 'mining_outpost');
+  assert('sellOre: capped at cargo', sold.cargo.iron === 0);
+
+  // buyEquipment tests
+  ts = freshState();
+  ts.credits = 1000;
+  let bought = buyEquipment(ts, 'drill', 1, 500);
+  assert('buyEquipment: credits deducted', bought.credits === 500);
+  assert('buyEquipment: tier upgraded', bought.equipment.drill === 1);
+  // Can't downgrade
+  bought = buyEquipment(bought, 'drill', 0, 0);
+  assert('buyEquipment: no downgrade', bought.equipment.drill === 1);
+  // Can't afford
+  let poorState = freshState();
+  poorState.credits = 10;
+  bought = buyEquipment(poorState, 'drill', 1, 500);
+  assert('buyEquipment: insufficient credits', bought.equipment.drill === 0);
+
+  // tickMining tests
+  ts = freshState();
+  ts.status = 'mining';
+  ts.location = 'dust_belt';
+  ts.charges = 5;
+  let mined = tickMining(ts, 10);
+  assert('tickMining: charges consumed', mined.charges < ts.charges);
+  assert('tickMining: cargo gained ore', cargoTotal(mined.cargo) > 0 || mined.looseRocks.length > 0);
+
+  // tickMining: stops when out of charges
+  ts = freshState();
+  ts.status = 'mining';
+  ts.location = 'dust_belt';
+  ts.charges = 0;
+  mined = tickMining(ts, 1);
+  assert('tickMining: stops when no charges and no rocks', mined.status === 'docked_field');
+
+  // tickTravel tests
+  ts = freshState();
+  ts.status = 'traveling';
+  ts.travelDest = 'dust_belt';
+  ts.travelTime = 12;
+  ts.travelProgress = 0;
+  let traveled = tickTravel(ts, 6);
+  assert('tickTravel: progress increases', traveled.travelProgress === 6);
+  assert('tickTravel: still traveling', traveled.status === 'traveling');
+  traveled = tickTravel(traveled, 7);
+  assert('tickTravel: arrived', traveled.status === 'docked_field');
+  assert('tickTravel: location updated', traveled.location === 'dust_belt');
+
+  // demand recovery
+  const dem = { mining_outpost: { iron: 0.5 } };
+  const recovered = updateDemand(dem, 7200); // one half-life
+  assertClose('updateDemand: half recovery after half-life', recovered.mining_outpost.iron, 0.75, 0.02);
+
+  // shield damage
+  ts = freshState();
+  ts.status = 'mining';
+  ts.location = 'iron_nebula';
+  ts.equipment.shield = 1;
+  ts.shieldHp = 100;
+  let damaged = tickShieldDamage(ts, 10);
+  assert('tickShieldDamage: hp reduced', damaged.shieldHp < 100);
+  // danger=1, reduction=0.2 → dmg = 1 * 0.8 * 0.1 * 10 = 0.8
+  assertClose('tickShieldDamage: correct damage', damaged.shieldHp, 99.2, 0.05);
+
+  // shield breach → emergency
+  ts.shieldHp = 0.05;
+  damaged = tickShieldDamage(ts, 1);
+  assert('tickShieldDamage: breach triggers emergency', damaged.status === 'emergency_jump');
+
+  // canEnterField
+  ts = freshState();
+  assert('canEnterField: dust belt always ok', canEnterField(ts, 'dust_belt'));
+  assert('canEnterField: iron nebula needs shield', !canEnterField(ts, 'iron_nebula'));
+  ts.equipment.shield = 1;
+  assert('canEnterField: deflector allows nebula', canEnterField(ts, 'iron_nebula'));
+
+  // buyConsumable
+  ts = freshState();
+  ts.credits = 100;
+  let bcs = buyConsumable(ts, 'charges', 10, 'mining_outpost');
+  assert('buyConsumable: charges added', bcs.charges === 40);
+  assertClose('buyConsumable: credits reduced', bcs.credits, 80);
+
+  // Equipment effects on mining — drill speed doubles rock rate
+  ts = freshState();
+  ts.status = 'mining';
+  ts.location = 'dust_belt';
+  ts.charges = 100;
+  ts.equipment.beam = 2; // Gravity Well: speed 2, capacity 8
+  const base_interval = drillInterval(ts, 'dust_belt');
+  ts.equipment.drill = 1; // Plasma Drill: speed 2.0
+  const fast_interval = drillInterval(ts, 'dust_belt');
+  assertClose('drillInterval: plasma drill halves interval', fast_interval, base_interval / 2, 0.01);
+
+  // startTravel fuel check
+  ts = freshState();
+  ts.fuel = 1;
+  let tt = startTravel(ts, 'trading_hub');
+  assert('startTravel: not enough fuel', tt.status === 'docked_station');
+
+  // refine
+  ts = freshState();
+  ts.location = 'deep_space_refinery';
+  ts.status = 'docked_station';
+  ts.cargo.iron = 5;
+  let ref = startRefine(ts);
+  assert('startRefine: status is refining', ref.status === 'refining');
+  ref = tickRefine(ref, REFINE_TIME + 1);
+  assert('tickRefine: completes', ref.status === 'docked_station');
+  assert('tickRefine: bonus set', ref.refineBonus === true);
+
+  // Render results
+  const el = document.getElementById('test-results');
+  let html = '<h2 style="color:var(--accent);font-family:Michroma;margin-bottom:0.5rem">ORE DRIFTER — Tests</h2>';
+  for (const r of results) {
+    html += `<div class="${r.pass ? 'test-pass' : 'test-fail'}">${r.pass ? '✓' : '✗'} ${r.name}</div>`;
+  }
+  html += `<div class="test-summary">${passed} passed, ${failed} failed — ${failed === 0 ? '<span class="test-pass">ALL PASS</span>' : '<span class="test-fail">FAILURES</span>'}</div>`;
+  el.innerHTML = html;
+  document.title = `Tests: ${passed}/${passed + failed} — Ore Drifter`;
+}
+
+// ═══════════════════════════════════════
+// RENDERING
+// ═══════════════════════════════════════
+
+let state;
+let lastRender = 0;
+
+function renderSidePanel() {
+  const cap = cargoCapacity(state);
+  const total = cargoTotal(state.cargo);
+  const pct = Math.min(100, total / cap * 100);
+  document.getElementById('cargo-bar-fill').style.width = pct + '%';
+  document.getElementById('cargo-bar-label').textContent = `${total} / ${cap}`;
+
+  // Cargo list
+  let cargoHtml = '';
+  for (const ore of ORES) {
+    const qty = state.cargo[ore.id] || 0;
+    if (qty > 0) {
+      cargoHtml += `<div class="consumable-row"><span style="color:${ore.color}">${ore.name}</span><span>${qty}</span></div>`;
+    }
+  }
+  document.getElementById('cargo-list').innerHTML = cargoHtml;
+
+  // Shield
+  const maxHp = shieldMaxHp(state);
+  const shieldSec = document.getElementById('shield-section');
+  if (maxHp > 0) {
+    shieldSec.style.display = '';
+    const spct = Math.max(0, state.shieldHp / maxHp * 100);
+    document.getElementById('shield-bar-fill').style.width = spct + '%';
+    document.getElementById('shield-bar-label').textContent = `${Math.ceil(state.shieldHp)} / ${maxHp}`;
+  } else {
+    shieldSec.style.display = 'none';
+  }
+
+  // Equipment
+  let equipHtml = '';
+  for (const cat of ['drill', 'beam', 'engine', 'shield', 'cargo']) {
+    const tier = state.equipment[cat];
+    const item = EQUIP[cat][tier];
+    equipHtml += `<div class="equip-row"><span class="equip-label">${cat}</span><span class="equip-value">${item.name}</span></div>`;
+  }
+  document.getElementById('equip-list').innerHTML = equipHtml;
+
+  // Consumables
+  document.getElementById('consumable-list').innerHTML =
+    `<div class="consumable-row"><span>Charges</span><span>${state.charges}</span></div>` +
+    `<div class="consumable-row"><span>Fuel</span><span>${state.fuel}</span></div>` +
+    `<div class="consumable-row"><span>Repair Kits</span><span>${state.repairKits}</span></div>`;
+}
+
+function renderNavigation(excludeCurrent) {
+  let html = '<div class="section"><div class="section-title">Navigation</div>';
+  const engine = EQUIP.engine[state.equipment.engine];
+  for (const node of RING) {
+    if (excludeCurrent && node.ref === state.location) continue;
+    const d = distance(state.location, node.ref);
+    if (d === 0) continue;
+    const time = calcTravelTime(state.location, node.ref, engine.speedMult);
+    const fuel = calcTravelFuel(state.location, node.ref, engine.fuelEff);
+    const canGo = state.fuel >= fuel;
+    const name = getLocationName(node.ref);
+    const typeTag = node.type === 'field' ? '⛏' : '🏪';
+    const field = getField(node.ref);
+    const dangerTag = field && field.danger > 0 ? ` ⚠${field.danger}` : '';
+
+    html += `<div class="nav-item${canGo ? '' : ' disabled'}" onclick="${canGo ? `doTravel('${node.ref}')` : ''}">
+      <div><div class="nav-name">${typeTag} ${name}${dangerTag}</div>
+      <div class="nav-info">${d} hop${d > 1 ? 's' : ''} · ${Math.round(time)}s · ${fuel} fuel</div></div>
+    </div>`;
+  }
+  html += '</div>';
+  return html;
+}
+
+function renderStationContext() {
+  const station = getStation(state.location);
+  if (!station) return '';
+  let html = '';
+
+  // Sell ore
+  html += '<div class="section"><div class="section-title">Sell Ore</div>';
+  for (const ore of ORES) {
+    const qty = state.cargo[ore.id] || 0;
+    const price = calcOrePrice(ore.id, state.location, state.demand);
+    const demandVal = state.demand?.[state.location]?.[ore.id] ?? 1;
+    const trend = demandVal > 0.95 ? 'stable' : demandVal > 0.7 ? 'down' : 'down';
+    const trendIcon = demandVal > 0.95 ? '→' : demandVal > 0.7 ? '↘' : '↓';
+    const bonusTag = state.refineBonus ? ' <span style="color:var(--accent2)">×1.4</span>' : '';
+    const displayPrice = state.refineBonus ? Math.round(price * REFINE_BONUS * 10) / 10 : price;
+
+    html += `<div class="ore-row">
+      <span class="ore-name" style="color:${ore.color}">${ore.name}</span>
+      <span class="ore-qty">${qty}</span>
+      <span class="ore-price">${fmt(displayPrice)} cr${bonusTag}</span>
+      <span class="trend-${trend}">${trendIcon}</span>
+      <span class="btn-row">
+        <button class="btn" onclick="doSell('${ore.id}',1)" ${qty < 1 ? 'disabled' : ''}>1</button>
+        <button class="btn" onclick="doSell('${ore.id}',10)" ${qty < 1 ? 'disabled' : ''}>10</button>
+        <button class="btn" onclick="doSell('${ore.id}',${qty})" ${qty < 1 ? 'disabled' : ''}>All</button>
+      </span>
+    </div>`;
+  }
+  html += '</div>';
+
+  // Buy consumables
+  html += '<div class="section"><div class="section-title">Buy Consumables</div>';
+  for (const [type, label] of [['charges', 'Drill Charges'], ['fuel', 'Fuel Cells'], ['repairKits', 'Repair Kits']]) {
+    const basePrice = CONSUMABLE_BASE_PRICES[type];
+    const price = Math.round(basePrice * station.consumableMod * 10) / 10;
+    const max = Math.floor(state.credits / price);
+    html += `<div class="ore-row">
+      <span class="ore-name">${label}</span>
+      <span class="ore-price">${price} cr</span>
+      <span class="btn-row">
+        <button class="btn" onclick="doBuyConsumable('${type}',1)" ${state.credits < price ? 'disabled' : ''}>1</button>
+        <button class="btn" onclick="doBuyConsumable('${type}',10)" ${state.credits < price ? 'disabled' : ''}>10</button>
+        <button class="btn" onclick="doBuyConsumable('${type}',${max})" ${max < 1 ? 'disabled' : ''}>Max</button>
+      </span>
+    </div>`;
+  }
+  html += '</div>';
+
+  // Buy equipment
+  html += '<div class="section"><div class="section-title">Equipment</div>';
+  for (const cat of ['drill', 'beam', 'engine', 'shield', 'cargo']) {
+    const tiers = EQUIP[cat];
+    for (let t = 0; t < tiers.length; t++) {
+      if (!station.equipStock.includes(t)) continue;
+      const item = tiers[t];
+      const owned = state.equipment[cat] >= t;
+      const canBuy = !owned && state.credits >= item.price && state.equipment[cat] === t - 1;
+      let stats = '';
+      if (cat === 'drill') stats = `spd:${item.speed} q:${item.quality}`;
+      else if (cat === 'beam') stats = `spd:${item.speed} cap:${item.capacity}`;
+      else if (cat === 'engine') stats = `spd:×${item.speedMult} fuel:×${item.fuelEff}`;
+      else if (cat === 'shield') stats = `hp:${item.hp} red:${Math.round(item.reduction * 100)}%`;
+      else if (cat === 'cargo') stats = `cap:${item.capacity}`;
+
+      html += `<div class="ore-row">
+        <span class="ore-name">${item.name}</span>
+        <span style="font-size:0.6rem;color:var(--text-dim)">${stats}</span>
+        <span class="ore-price">${owned ? '<span style="color:var(--success)">owned</span>' : fmt(item.price) + ' cr'}</span>
+        ${!owned ? `<button class="btn btn-accent" onclick="doBuyEquip('${cat}',${t},${item.price})" ${!canBuy ? 'disabled' : ''}>Buy</button>` : ''}
+      </div>`;
+    }
+  }
+  html += '</div>';
+
+  // Refinery
+  if (state.location === 'deep_space_refinery' && cargoTotal(state.cargo) > 0 && !state.refineBonus) {
+    html += `<div class="section"><div class="section-title">Refinery</div>
+      <p style="font-size:0.7rem;color:var(--text-dim);margin-bottom:0.3rem">Refine cargo for 1.4× sell prices. Takes ${REFINE_TIME}s.</p>
+      <button class="btn btn-accent" onclick="doRefine()">Refine Cargo</button>
+    </div>`;
+  }
+  if (state.refineBonus) {
+    html += `<div class="section"><p style="color:var(--accent2);font-size:0.75rem">✦ Cargo refined — 1.4× sell bonus active</p></div>`;
+  }
+
+  html += renderNavigation(true);
+  return html;
+}
+
+function renderFieldContext() {
+  const field = getField(state.location);
+  if (!field) return '';
+  let html = '';
+
+  // Field info
+  html += `<div class="section"><div class="section-title">${field.name}</div>`;
+  if (field.danger > 0) {
+    html += `<div style="color:var(--danger);font-size:0.7rem;margin-bottom:0.3rem">⚠ Danger Level ${field.danger}</div>`;
+  }
+  html += '<div style="font-size:0.7rem;color:var(--text-dim);margin-bottom:0.3rem">Ores: ';
+  html += Object.entries(field.ores).map(([id, pct]) => {
+    const ore = ORES.find(o => o.id === id);
+    return `<span style="color:${ore.color}">${ore.name}</span> ${Math.round(pct * 100)}%`;
+  }).join(', ');
+  html += '</div></div>';
+
+  if (state.status === 'mining') {
+    const drill = EQUIP.drill[state.equipment.drill];
+    const beam = EQUIP.beam[state.equipment.beam];
+    const interval = drillInterval(state, state.location);
+    const pulling = state.looseRocks.filter(r => r.pulling).length;
+    const floating = state.looseRocks.filter(r => !r.pulling).length;
+
+    html += '<div class="section"><div class="section-title">Mining</div>';
+    html += `<div class="mining-stat"><span>Drill rate</span><span>1 rock / ${interval.toFixed(1)}s</span></div>`;
+    html += `<div class="mining-stat"><span>Beam pulling</span><span>${pulling} / ${beam.capacity}</span></div>`;
+    html += `<div class="mining-stat"><span>Floating</span><span>${floating}</span></div>`;
+    html += `<div class="mining-stat"><span>Rocks lost</span><span style="color:var(--danger)">${state.rocksLost || 0}</span></div>`;
+
+    // Rock visualization
+    html += '<div class="rocks-display">';
+    for (const rock of state.looseRocks) {
+      const ore = ORES.find(o => o.id === rock.ore);
+      html += `<div class="rock${rock.pulling ? ' pulling' : ''}" style="background:${ore.color}"></div>`;
+    }
+    html += '</div>';
+
+    html += `<div class="btn-row">
+      <button class="btn" onclick="doStopMining()">Stop Mining</button>
+      ${state.repairKits > 0 && shieldMaxHp(state) > 0 ? '<button class="btn" onclick="doRepair()">Use Repair Kit</button>' : ''}
+    </div></div>`;
+  } else {
+    // Docked at field
+    const canMine = state.charges > 0 && cargoTotal(state.cargo) < cargoCapacity(state) && canEnterField(state, state.location);
+    html += '<div class="section">';
+    if (!canEnterField(state, state.location)) {
+      html += '<div style="color:var(--danger);font-size:0.7rem">Shield insufficient for this field</div>';
+    } else if (state.charges <= 0) {
+      html += '<div style="color:var(--danger);font-size:0.7rem">No drill charges</div>';
+    } else if (cargoTotal(state.cargo) >= cargoCapacity(state)) {
+      html += '<div style="color:var(--accent);font-size:0.7rem">Cargo full</div>';
+    }
+    html += `<button class="btn btn-accent" onclick="doStartMining()" ${canMine ? '' : 'disabled'}>Start Mining</button>`;
+    html += `${state.repairKits > 0 && shieldMaxHp(state) > 0 && state.shieldHp < shieldMaxHp(state) ? ' <button class="btn" onclick="doRepair()">Repair</button>' : ''}`;
+    html += '</div>';
+    html += renderNavigation(true);
+  }
+
+  return html;
+}
+
+function renderTravelContext() {
+  const pct = state.travelTime > 0 ? state.travelProgress / state.travelTime * 100 : 0;
+  const eta = Math.max(0, state.travelTime - state.travelProgress);
+  const destName = getLocationName(state.travelDest);
+  return `<div class="travel-progress">
+    <div style="font-size:0.7rem;color:var(--text-dim)">Traveling to</div>
+    <div style="font-size:1rem;color:var(--text-bright);margin:0.3rem 0">${destName}</div>
+    <div class="bar-container" style="max-width:300px;margin:0.5rem auto">
+      <div class="bar-fill" style="width:${pct}%;background:var(--accent2)"></div>
+    </div>
+    <div class="eta">${Math.ceil(eta)}s</div>
+  </div>`;
+}
+
+function renderRefineContext() {
+  const pct = REFINE_TIME > 0 ? state.refineProgress / REFINE_TIME * 100 : 0;
+  const eta = Math.max(0, REFINE_TIME - state.refineProgress);
+  return `<div class="travel-progress">
+    <div style="font-size:0.7rem;color:var(--text-dim)">Refining cargo</div>
+    <div class="bar-container" style="max-width:300px;margin:0.5rem auto">
+      <div class="bar-fill" style="width:${pct}%;background:var(--accent2)"></div>
+    </div>
+    <div class="eta">${Math.ceil(eta)}s</div>
+  </div>`;
+}
+
+function render() {
+  document.getElementById('credits').textContent = fmt(state.credits) + ' cr';
+  document.getElementById('location').textContent = getLocationName(state.location);
+  document.title = `${fmt(state.credits)} cr — Ore Drifter`;
+
+  renderSidePanel();
+
+  const ctx = document.getElementById('context-panel');
+  if (state.status === 'emergency_jump') {
+    state = emergencyJump(state);
+  }
+  if (state.status === 'traveling') {
+    ctx.innerHTML = renderTravelContext();
+  } else if (state.status === 'refining') {
+    ctx.innerHTML = renderRefineContext();
+  } else if (state.status === 'docked_station') {
+    ctx.innerHTML = renderStationContext();
+  } else if (state.status === 'mining' || state.status === 'docked_field') {
+    ctx.innerHTML = renderFieldContext();
+  }
+}
+
+// ═══════════════════════════════════════
+// ACTIONS
+// ═══════════════════════════════════════
+
+function doSell(oreId, qty) {
+  const price = calcOrePrice(oreId, state.location, state.demand);
+  const actual = Math.min(qty, state.cargo[oreId] || 0);
+  const displayPrice = state.refineBonus ? price * REFINE_BONUS : price;
+  // Apply refine bonus by temporarily modifying demand to achieve the multiplied price
+  if (state.refineBonus) {
+    const totalEarning = Math.round(displayPrice * actual * 10) / 10;
+    const newCargo = { ...state.cargo, [oreId]: (state.cargo[oreId] || 0) - actual };
+    const newDemand = { ...state.demand };
+    if (!newDemand[state.location]) newDemand[state.location] = {};
+    const curDemand = newDemand[state.location][oreId] ?? 1;
+    newDemand[state.location] = { ...newDemand[state.location], [oreId]: Math.max(DEMAND_MIN, curDemand - actual * DEMAND_DROP_PER_UNIT) };
+    state = { ...state, cargo: newCargo, credits: state.credits + totalEarning, demand: newDemand };
+    state.totalEarned += totalEarning;
+    // Clear refine bonus if all cargo sold
+    if (cargoTotal(state.cargo) === 0) state.refineBonus = false;
+  } else {
+    const before = state.credits;
+    state = sellOre(state, oreId, qty, state.location);
+    state.totalEarned += state.credits - before;
+  }
+  render();
+}
+
+function doBuyConsumable(type, qty) {
+  state = buyConsumable(state, type, qty, state.location);
+  render();
+}
+
+function doBuyEquip(category, tier, price) {
+  state = buyEquipment(state, category, tier, price);
+  render();
+}
+
+function doTravel(destId) {
+  if (state.status === 'mining') return;
+  state = startTravel(state, destId);
+  state.refineBonus = false;
+  render();
+}
+
+function doStartMining() {
+  state = startMining(state);
+  render();
+}
+
+function doStopMining() {
+  state = stopMining(state);
+  render();
+}
+
+function doRepair() {
+  state = useRepairKit(state);
+  render();
+}
+
+function doRefine() {
+  state = startRefine(state);
+  render();
+}
+
+// ═══════════════════════════════════════
+// GAME LOOP
+// ═══════════════════════════════════════
+
+function tick() {
+  const now = Date.now();
+  const dt = Math.min((now - state.lastTick) / 1000, 300); // cap at 5min offline
+  state.lastTick = now;
+  state.playTime += dt;
+
+  state.demand = updateDemand(state.demand, dt);
+  state = tickMining(state, dt);
+  state = tickTravel(state, dt);
+  state = tickShieldDamage(state, dt);
+  state = tickRefine(state, dt);
+
+  // Render at ~15fps for smooth bars, but not every tick
+  if (now - lastRender > 66) {
+    render();
+    lastRender = now;
+  }
+}
+
+// ═══════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════
+
+if (location.search.includes('test')) {
+  runTests();
+} else {
+  state = loadState();
+  render();
+  setInterval(tick, 50);
+  setInterval(() => saveState(state), 30000);
+  window.addEventListener('beforeunload', () => saveState(state));
+}
+</script>
+</body>
+</html>
