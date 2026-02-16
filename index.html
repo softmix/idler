@@ -563,7 +563,7 @@ function drawOrb(time) {
   for (let i = 0; i < arcN; i++) {
     const sp = 0.0004 + intensity * 0.0004;
     const a = time * sp * (i % 2 ? 1 : -0.7) + (i * Math.PI * 2) / arcN;
-    const ar = r * (0.25 + 0.4 * Math.sin(time * 0.001 + i * 1.7));
+    const ar = Math.abs(r * (0.25 + 0.4 * Math.sin(time * 0.001 + i * 1.7)));
     const al = 0.12 + intensity * 0.18 + Math.sin(time * 0.002 + i) * 0.06;
     ctx.strokeStyle = i % 3 === 0
       ? `rgba(139,92,246,${al})` : `rgba(0,232,252,${al})`;
