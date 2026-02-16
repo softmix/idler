@@ -2,6 +2,8 @@
 
 An idle game where you extract energy from the quantum void. Single HTML file, no dependencies.
 
+**[Play it](https://softmix.github.io/idler/)**
+
 ## Gameplay
 
 - Click the animated orb (or press Space) to harvest energy
