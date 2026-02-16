@@ -384,7 +384,7 @@ body {
     </div>
   </div>
 </div>
-<div class="version" id="version-btn">v0.4</div>
+<div class="version" id="version-btn">v0.5</div>
 <div class="reset-popup" id="reset-popup">
   <p>Reset all progress?</p>
   <button id="reset-confirm">Reset</button>
@@ -1007,7 +1007,7 @@ function freshState() {
     autopilot: true,
     autoField: 'dust_belt',
     autoStation: 'mining_outpost',
-    autoDock: 0,
+    autoDock: 3,
   };
 }
 
@@ -1254,6 +1254,7 @@ function runTests() {
   ts.autoStation = 'mining_outpost';
   ts.location = 'mining_outpost';
   ts.status = 'docked_station';
+  ts.autoDock = 0;
   ts.cargo.iron = 10;
   ts.credits = 50;
   var ap = tickAutopilot(ts);
@@ -1276,6 +1277,19 @@ function runTests() {
   ts = Object.assign({}, freshState(), { status: 'docked_station', location: 'mining_outpost', autoDock: 2, cargo: { iron: 5 } });
   ap = tickAutopilot(ts);
   assert('tickAutopilot: docking cooldown skips station actions', ap.cargo.iron === 5 && ap.status === 'docked_station');
+
+  // Reset: clears save and survives beforeunload re-save
+  var dirtyState = Object.assign({}, freshState(), { credits: 999, status: 'mining', location: 'rocky_reach' });
+  saveState(dirtyState);
+  assert('reset: save exists before reset', localStorage.getItem(SAVE_KEY) !== null);
+  // Simulate what the reset button does (minus reload)
+  dirtyState = freshState();
+  localStorage.removeItem(SAVE_KEY);
+  // Simulate beforeunload firing with the now-fresh state
+  saveState(dirtyState);
+  var reloaded = loadState();
+  assert('reset: reloaded state is fresh after beforeunload re-save', reloaded.credits === 0 && reloaded.status === 'docked_station' && reloaded.location === 'mining_outpost');
+  localStorage.removeItem(SAVE_KEY);
 
   // Render results
   const el = document.getElementById('test-results');
@@ -1996,6 +2010,7 @@ if (location.search.includes('test')) {
   document.getElementById('version-btn').onclick = () => resetPopup.classList.toggle('open');
   document.getElementById('reset-cancel').onclick = () => resetPopup.classList.remove('open');
   document.getElementById('reset-confirm').onclick = () => {
+    state = freshState();
     localStorage.removeItem(SAVE_KEY);
     location.reload();
   };
