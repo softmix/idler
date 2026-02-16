@@ -357,7 +357,7 @@ body {
     </div>
   </div>
 </div>
-<div class="version">v0.2</div>
+<div class="version">v0.3</div>
 <div class="save-indicator" id="save-indicator">saved</div>
 
 <div id="test-container" style="display:none">
@@ -708,6 +708,7 @@ function tickTravel(state, dt) {
   if (s.travelProgress >= s.travelTime) {
     s.location = s.travelDest;
     s.status = getLocationType(s.travelDest) === 'station' ? 'docked_station' : 'docked_field';
+    if (s.status === 'docked_station') s.autoDock = 3;
     s.travelDest = null;
     s.travelTime = 0;
     s.travelProgress = 0;
@@ -795,6 +796,7 @@ function emergencyJump(state) {
     looseRocks: [],
     drillTimer: 0,
     shieldHp: 0,
+    autoDock: 3,
   };
 }
 
@@ -851,6 +853,7 @@ function tickAutopilot(state) {
   let s = state;
 
   if (s.status === 'docked_station') {
+    if (s.autoDock > 0) return s;
     // 1. Sell all ore
     const newCargo = { ...s.cargo };
     let earnings = 0;
@@ -972,6 +975,7 @@ function freshState() {
     autopilot: true,
     autoField: 'dust_belt',
     autoStation: 'mining_outpost',
+    autoDock: 0,
   };
 }
 
@@ -1235,6 +1239,11 @@ function runTests() {
   ts.charges = 10;
   ap = tickAutopilot(ts);
   assert('tickAutopilot: starts mining at field', ap.status === 'mining');
+
+  // tickAutopilot: docking cooldown prevents station actions
+  ts = Object.assign({}, freshState(), { status: 'docked_station', location: 'mining_outpost', autoDock: 2, cargo: { iron: 5 } });
+  ap = tickAutopilot(ts);
+  assert('tickAutopilot: docking cooldown skips station actions', ap.cargo.iron === 5 && ap.status === 'docked_station');
 
   // Render results
   const el = document.getElementById('test-results');
@@ -1918,6 +1927,7 @@ function tick() {
   state = tickTravel(state, dt);
   state = tickShieldDamage(state, dt);
   state = tickRefine(state, dt);
+  if (state.autoDock > 0) state.autoDock = Math.max(0, state.autoDock - dt);
   state = tickAutopilot(state);
 
   // Check if view changed (status transition like travel→docked)
