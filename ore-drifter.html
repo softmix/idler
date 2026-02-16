@@ -66,9 +66,22 @@ body {
   padding: 0.8rem;
   overflow-y: auto;
 }
+.right-pane {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+#scene {
+  width: 100%;
+  height: 220px;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--border);
+}
 .context-panel {
   padding: 0.8rem;
   overflow-y: auto;
+  flex: 1;
+  min-height: 0;
 }
 .section { margin-bottom: 1rem; }
 .section-title {
@@ -279,6 +292,7 @@ body {
     border-right: none;
     border-bottom: 1px solid var(--border);
   }
+  #scene { height: 160px; }
 }
 
 /* Test mode */
@@ -337,7 +351,10 @@ body {
         <div class="autopilot-row"><label class="autopilot-label">Station</label><select id="auto-station-select" class="autopilot-select" onchange="setAutoStation(this.value)"></select></div>
       </div>
     </div>
-    <div class="context-panel" id="context-panel"></div>
+    <div class="right-pane">
+      <canvas id="scene"></canvas>
+      <div class="context-panel" id="context-panel"></div>
+    </div>
   </div>
 </div>
 <div class="version">v0.2</div>
@@ -1585,6 +1602,227 @@ function tickRender() {
 }
 
 // ═══════════════════════════════════════
+// SCENE
+// ═══════════════════════════════════════
+
+function mulberry32(a) {
+  return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+}
+function hashStr(s) { let h = 0; for (let i = 0; i < s.length; i++) h = ((h << 5) - h + s.charCodeAt(i)) | 0; return Math.abs(h); }
+
+const STARS = Array.from({ length: 150 }, () => ({
+  x: Math.random(), y: Math.random(), s: Math.random() * 1.5 + 0.3,
+  b: Math.random() * 0.5 + 0.5, p: Math.random() * 6.28, sp: Math.random() * 1.5 + 0.5,
+}));
+
+const _astCache = {};
+function fieldAsteroids(id) {
+  if (_astCache[id]) return _astCache[id];
+  const field = getField(id); if (!field) return [];
+  const rng = mulberry32(hashStr(id)), ores = Object.entries(field.ores), out = [];
+  for (let i = 0; i < 25; i++) {
+    let r = rng(), ore = ores[0][0];
+    for (const [oid, w] of ores) { r -= w; if (r <= 0) { ore = oid; break; } }
+    out.push({ x: 0.05 + rng() * 0.9, y: 0.08 + rng() * 0.84, r: 3 + rng() * 14,
+      color: ORES.find(o => o.id === ore).color, seed: (rng() * 99999) | 0,
+      rs: (rng() - 0.5) * 0.0004, dx: (rng() - 0.5) * 0.002, dy: (rng() - 0.5) * 0.002 });
+  }
+  return _astCache[id] = out;
+}
+
+let sCanvas, sCtx;
+function initScene() {
+  sCanvas = document.getElementById('scene'); if (!sCanvas) return;
+  sCtx = sCanvas.getContext('2d');
+  const resize = () => {
+    const d = devicePixelRatio || 1, r = sCanvas.getBoundingClientRect();
+    sCanvas.width = r.width * d; sCanvas.height = r.height * d;
+    sCtx.setTransform(d, 0, 0, d, 0, 0);
+  };
+  resize(); addEventListener('resize', resize);
+  requestAnimationFrame(function loop(t) { if (state) drawScene(t); requestAnimationFrame(loop); });
+}
+
+function drawBg(c, w, h, t, warp) {
+  for (const s of STARS) {
+    const tw = 0.6 + 0.4 * Math.sin(t * 0.001 * s.sp + s.p);
+    c.fillStyle = `rgba(180,180,220,${s.b * tw})`;
+    if (warp) {
+      const x = ((s.x * w - t * 0.08 * s.s) % w + w) % w;
+      c.fillRect(x, s.y * h, s.s * 6 + 2, 0.7);
+    } else {
+      c.fillRect(s.x * w, s.y * h, s.s, s.s);
+    }
+  }
+}
+
+function drawNebula(c, w, h, fid) {
+  const f = getField(fid); if (!f) return;
+  const top = Object.entries(f.ores).sort((a, b) => b[1] - a[1])[0];
+  const col = ORES.find(o => o.id === top[0]).color;
+  const g = c.createRadialGradient(w * 0.5, h * 0.5, 0, w * 0.5, h * 0.5, w * 0.45);
+  g.addColorStop(0, col + '18'); g.addColorStop(1, 'transparent');
+  c.fillStyle = g; c.fillRect(0, 0, w, h);
+}
+
+function drawRock(c, x, y, r, col, seed, rot) {
+  c.save(); c.translate(x, y); c.rotate(rot);
+  const rng = mulberry32(seed);
+  c.beginPath();
+  for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * 6.28, d = r * (0.7 + 0.3 * rng());
+    if (i === 0) c.moveTo(Math.cos(a) * d, Math.sin(a) * d);
+    else c.lineTo(Math.cos(a) * d, Math.sin(a) * d);
+  }
+  c.closePath(); c.fillStyle = col; c.fill();
+  c.strokeStyle = 'rgba(255,255,255,0.06)'; c.lineWidth = 0.5; c.stroke();
+  c.restore();
+}
+
+function drawShip(c, x, y, sc, opts) {
+  c.save(); c.translate(x, y); c.scale(sc, sc);
+  const t = opts.t || 0;
+  // Wings
+  c.fillStyle = '#484860';
+  c.beginPath(); c.moveTo(6, -10); c.lineTo(-10, -12); c.lineTo(-12, -6); c.lineTo(-2, -6); c.closePath(); c.fill();
+  c.beginPath(); c.moveTo(6, 10); c.lineTo(-10, 12); c.lineTo(-12, 6); c.lineTo(-2, 6); c.closePath(); c.fill();
+  // Hull
+  c.fillStyle = '#5c5c74'; c.beginPath();
+  c.moveTo(20, 0); c.lineTo(10, -6); c.lineTo(-12, -5); c.lineTo(-14, 0); c.lineTo(-12, 5); c.lineTo(10, 6);
+  c.closePath(); c.fill(); c.strokeStyle = '#78788e'; c.lineWidth = 0.4; c.stroke();
+  // Hull top highlight
+  c.fillStyle = '#6a6a84'; c.beginPath();
+  c.moveTo(20, 0); c.lineTo(10, -6); c.lineTo(-12, -5); c.lineTo(-12, -1); c.lineTo(10, -1); c.closePath(); c.fill();
+  // Cockpit
+  c.fillStyle = 'rgba(64,200,240,0.6)'; c.beginPath(); c.ellipse(13, -0.5, 3.5, 2.2, 0, 0, 6.28); c.fill();
+  // Engine glow
+  if (opts.engine) {
+    const fl = 0.7 + 0.3 * Math.sin(t * 0.012);
+    for (const ey of [-3, 3]) {
+      const len = 10 + 4 * Math.sin(t * 0.009 + ey);
+      const g = c.createLinearGradient(-14, 0, -14 - len, 0);
+      g.addColorStop(0, `rgba(240,160,64,${fl})`); g.addColorStop(0.4, 'rgba(240,100,40,0.3)'); g.addColorStop(1, 'rgba(240,60,20,0)');
+      c.fillStyle = g; c.beginPath(); c.moveTo(-14, ey - 2); c.lineTo(-14 - len, ey); c.lineTo(-14, ey + 2); c.fill();
+    }
+  }
+  // Drill beam
+  if (opts.drill) {
+    const len = 45 + 12 * Math.sin(t * 0.005), pulse = 0.5 + 0.5 * Math.sin(t * 0.008);
+    c.lineWidth = 1 + pulse * 0.8; c.strokeStyle = `rgba(240,160,64,${0.35 + pulse * 0.4})`;
+    c.beginPath(); c.moveTo(20, 0); c.lineTo(20 + len, Math.sin(t * 0.003) * 2); c.stroke();
+    for (let i = 0; i < 4; i++) {
+      c.fillStyle = `rgba(255,200,80,${0.3 + Math.sin(t * 0.01 + i) * 0.4})`;
+      c.fillRect(20 + len + Math.sin(t * 0.007 + i * 2) * 6, Math.sin(t * 0.003) * 2 + Math.cos(t * 0.009 + i * 3) * 6, 1.5, 1.5);
+    }
+  }
+  // Shield glow
+  if (opts.shield) {
+    c.strokeStyle = `rgba(64,200,240,${0.1 + 0.08 * Math.sin(t * 0.002)})`; c.lineWidth = 1.5;
+    c.beginPath(); c.ellipse(2, 0, 24, 14, 0, 0, 6.28); c.stroke();
+  }
+  c.restore();
+}
+
+function drawStation(c, x, y, t) {
+  c.save(); c.translate(x, y);
+  // Outer ring
+  c.strokeStyle = 'rgba(85,85,125,0.5)'; c.lineWidth = 2.5;
+  c.beginPath(); c.arc(0, 0, 40, 0, 6.28); c.stroke();
+  // Inner hull
+  c.fillStyle = '#131328'; c.beginPath();
+  for (let i = 0; i < 8; i++) { const a = (i / 8) * 6.28 - 0.39, r = 28; i === 0 ? c.moveTo(Math.cos(a) * r, Math.sin(a) * r) : c.lineTo(Math.cos(a) * r, Math.sin(a) * r); }
+  c.closePath(); c.fill(); c.strokeStyle = 'rgba(75,75,115,0.4)'; c.lineWidth = 1.5; c.stroke();
+  // Core
+  c.fillStyle = '#0d0d1e'; c.beginPath(); c.arc(0, 0, 14, 0, 6.28); c.fill();
+  c.strokeStyle = 'rgba(64,200,240,0.2)'; c.lineWidth = 1; c.stroke();
+  // Ring lights
+  for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * 6.28 + t * 0.0003, on = Math.sin(t * 0.002 + i * 1.2) > 0.2;
+    c.fillStyle = on ? 'rgba(240,160,64,0.65)' : 'rgba(240,160,64,0.08)';
+    c.beginPath(); c.arc(Math.cos(a) * 34, Math.sin(a) * 34, 1.8, 0, 6.28); c.fill();
+  }
+  // Spokes
+  c.strokeStyle = 'rgba(65,65,105,0.25)'; c.lineWidth = 1.5;
+  for (let i = 0; i < 4; i++) { const a = (i / 4) * 6.28 + 0.4; c.beginPath(); c.moveTo(Math.cos(a) * 14, Math.sin(a) * 14); c.lineTo(Math.cos(a) * 28, Math.sin(a) * 28); c.stroke(); }
+  // Docking port
+  c.strokeStyle = 'rgba(64,200,240,0.3)'; c.lineWidth = 1.5;
+  c.beginPath(); c.moveTo(40, -4); c.lineTo(56, -4); c.moveTo(40, 4); c.lineTo(56, 4); c.stroke();
+  const blink = Math.sin(t * 0.003) > 0;
+  c.fillStyle = blink ? 'rgba(64,200,240,0.7)' : 'rgba(64,200,240,0.12)';
+  c.beginPath(); c.arc(58, 0, 2, 0, 6.28); c.fill();
+  c.restore();
+}
+
+function drawLabel(c, w, h, text) {
+  c.fillStyle = 'rgba(170,170,200,0.3)'; c.font = '10px "DM Mono",monospace';
+  c.textAlign = 'center'; c.fillText(text, w / 2, h - 10);
+}
+
+function drawScene(t) {
+  const d = devicePixelRatio || 1, w = sCanvas.width / d, h = sCanvas.height / d;
+  const c = sCtx, s = state;
+  c.fillStyle = '#0a0a12'; c.fillRect(0, 0, w, h);
+
+  if (s.status === 'traveling') {
+    drawBg(c, w, h, t, true);
+    drawShip(c, w * 0.42, h * 0.48 + Math.sin(t * 0.002) * 2, 2.8, { engine: true, t });
+    const pct = s.travelTime > 0 ? s.travelProgress / s.travelTime : 0;
+    drawLabel(c, w, h, '\u2192 ' + getLocationName(s.travelDest));
+    const bw = 100, bx = w / 2 - bw / 2, by = h - 20;
+    c.fillStyle = 'rgba(30,30,50,0.5)'; c.fillRect(bx, by, bw, 3);
+    c.fillStyle = '#40c8f0'; c.fillRect(bx, by, bw * pct, 3);
+
+  } else if (s.status === 'mining') {
+    drawBg(c, w, h, t, false);
+    drawNebula(c, w, h, s.location);
+    for (const a of fieldAsteroids(s.location))
+      drawRock(c, a.x * w + Math.sin(t * a.dx) * 8, a.y * h + Math.cos(t * a.dy) * 6, a.r * 0.6, a.color + '50', a.seed, t * a.rs);
+    const sx = w * 0.28, sy = h * 0.48 + Math.sin(t * 0.0015) * 2;
+    const field = getField(s.location);
+    drawShip(c, sx, sy, 2.5, { drill: s.charges > 0, shield: field && field.danger > 0, t });
+    for (let i = 0; i < s.looseRocks.length; i++) {
+      const rock = s.looseRocks[i], ore = ORES.find(o => o.id === rock.ore);
+      const ang = (i / Math.max(s.looseRocks.length, 1)) * 4.7 - 1;
+      const dist = rock.pulling ? 25 * (1 - rock.pullProgress) + 18 : 50 + i * 4;
+      const rx = sx + 55 + Math.cos(ang) * dist + Math.sin(t * 0.003 + i) * 4;
+      const ry = sy + Math.sin(ang) * dist * 0.6 + Math.cos(t * 0.002 + i) * 3;
+      drawRock(c, rx, ry, 4.5, ore ? ore.color : '#888', (i * 13) | 0, t * 0.001 + i);
+      if (rock.pulling) {
+        c.strokeStyle = `rgba(64,200,240,${0.15 + 0.12 * Math.sin(t * 0.005 + i)})`; c.lineWidth = 0.7;
+        c.setLineDash([3, 4]); c.beginPath(); c.moveTo(sx + 50, sy); c.lineTo(rx, ry); c.stroke(); c.setLineDash([]);
+      }
+    }
+    drawLabel(c, w, h, getLocationName(s.location));
+
+  } else if (s.status === 'refining') {
+    drawBg(c, w, h, t, false);
+    drawStation(c, w * 0.5, h * 0.45, t);
+    drawShip(c, w * 0.5 + 68, h * 0.45, 2, { t });
+    const pct = REFINE_TIME > 0 ? s.refineProgress / REFINE_TIME : 0;
+    for (let i = 0; i < 12; i++) {
+      const a = (i / 12) * 6.28 + t * 0.002, r = 22 + pct * 25;
+      c.fillStyle = `rgba(64,200,240,${0.25 + 0.15 * Math.sin(t * 0.003 + i)})`;
+      c.fillRect(w * 0.5 + Math.cos(a) * r - 1, h * 0.45 + Math.sin(a) * r - 1, 2.5, 2.5);
+    }
+    drawLabel(c, w, h, 'refining ' + Math.round(pct * 100) + '%');
+
+  } else if (getLocationType(s.location) === 'station') {
+    drawBg(c, w, h, t, false);
+    drawStation(c, w * 0.5, h * 0.45, t);
+    drawShip(c, w * 0.5 + 68, h * 0.45, 2, { t });
+    drawLabel(c, w, h, getLocationName(s.location));
+
+  } else {
+    drawBg(c, w, h, t, false);
+    drawNebula(c, w, h, s.location);
+    for (const a of fieldAsteroids(s.location))
+      drawRock(c, a.x * w + Math.sin(t * a.dx) * 8, a.y * h + Math.cos(t * a.dy) * 6, a.r, a.color, a.seed, t * a.rs);
+    drawShip(c, w * 0.35, h * 0.48 + Math.sin(t * 0.001) * 3, 2.2, { t });
+    drawLabel(c, w, h, getLocationName(s.location));
+  }
+}
+
+// ═══════════════════════════════════════
 // ACTIONS
 // ═══════════════════════════════════════
 
@@ -1707,6 +1945,7 @@ if (location.search.includes('test')) {
     state.autoStation = bestStation(state, state.cargo);
   }
   render();
+  initScene();
   setInterval(tick, 50);
   setInterval(() => saveState(state), 30000);
   window.addEventListener('beforeunload', () => saveState(state));
