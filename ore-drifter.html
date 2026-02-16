@@ -239,7 +239,34 @@ body {
   font-size: 0.55rem;
   color: var(--text-dim);
   opacity: 0.5;
+  cursor: pointer;
 }
+.reset-popup {
+  position: fixed;
+  bottom: 24px;
+  right: 8px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 12px 16px;
+  font-size: 0.75rem;
+  z-index: 100;
+  display: none;
+}
+.reset-popup.open { display: block; }
+.reset-popup p { margin: 0 0 10px; color: var(--text-dim); }
+.reset-popup button {
+  background: #a33;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  padding: 4px 12px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.7rem;
+  margin-right: 6px;
+}
+.reset-popup .cancel-btn { background: var(--border); color: var(--text-dim); }
 .save-indicator {
   position: fixed;
   bottom: 4px;
@@ -357,7 +384,12 @@ body {
     </div>
   </div>
 </div>
-<div class="version">v0.3</div>
+<div class="version" id="version-btn">v0.4</div>
+<div class="reset-popup" id="reset-popup">
+  <p>Reset all progress?</p>
+  <button id="reset-confirm">Reset</button>
+  <button class="cancel-btn" id="reset-cancel">Cancel</button>
+</div>
 <div class="save-indicator" id="save-indicator">saved</div>
 
 <div id="test-container" style="display:none">
@@ -1959,6 +1991,14 @@ if (location.search.includes('test')) {
   setInterval(tick, 50);
   setInterval(() => saveState(state), 30000);
   window.addEventListener('beforeunload', () => saveState(state));
+
+  const resetPopup = document.getElementById('reset-popup');
+  document.getElementById('version-btn').onclick = () => resetPopup.classList.toggle('open');
+  document.getElementById('reset-cancel').onclick = () => resetPopup.classList.remove('open');
+  document.getElementById('reset-confirm').onclick = () => {
+    localStorage.removeItem(SAVE_KEY);
+    location.reload();
+  };
 }
 </script>
 </body>
