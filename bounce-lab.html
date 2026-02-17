@@ -384,7 +384,7 @@ body {
     <h1>BOUNCE LAB</h1>
     <div class="rp-display"><span id="rp-count">0</span> RP</div>
   </div>
-  <div class="version" id="version-btn">v0.4</div>
+  <div class="version" id="version-btn">v0.5</div>
 </div>
 
 <div class="main">
@@ -864,7 +864,13 @@ function updatePhysics(dt) {
         const ny = dd > 0 ? ddy / dd : 1;
         b.x = closest.x + nx * (spinnerThick + 1);
         b.y = closest.y + ny * (spinnerThick + 1);
-        // Impart spinner velocity (additive kick, not proportional to bar length)
+        // Reflect velocity off the bar
+        const dot = b.vx * nx + b.vy * ny;
+        if (dot < 0) {
+          b.vx -= 2 * dot * nx * elast;
+          b.vy -= 2 * dot * ny * elast;
+        }
+        // Add spinner kick
         const kick = 2 + spinnerLevel * 1.5;
         b.vx += -sin * kick;
         b.vy += cos * kick;
