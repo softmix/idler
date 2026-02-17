@@ -1165,6 +1165,29 @@ function renderUpgrades() {
   });
 }
 
+// Lightweight update — just toggle classes on existing DOM, no rebuild
+function updateUpgradeStates() {
+  document.querySelectorAll('.upgrade').forEach(el => {
+    const id = el.dataset.id;
+    const up = UPGRADES[id];
+    const lvl = getLevel(id);
+    const maxed = lvl >= up.maxLevel;
+    const cost = getNextCost(id);
+    const canAfford = S.rp >= cost;
+    const locked = !maxed && !canAfford && cost > S.totalRp * 2 && lvl === 0;
+    const wasLocked = el.classList.contains('locked');
+
+    el.classList.toggle('locked', locked);
+    const costEl = el.querySelector('.upgrade-cost');
+    if (costEl && !maxed) costEl.classList.toggle('cant-afford', !canAfford);
+
+    // Bind click handler if just unlocked
+    if (wasLocked && !locked) {
+      el.addEventListener('click', () => buyUpgrade(id));
+    }
+  });
+}
+
 function buyUpgrade(id) {
   const up = UPGRADES[id];
   const lvl = getLevel(id);
@@ -1453,7 +1476,7 @@ function gameLoop(timestamp) {
     updateLog();
     checkMilestones();
     const activeTab = document.querySelector('.tab.active').dataset.tab;
-    if (activeTab === 'upgrades') renderUpgrades();
+    if (activeTab === 'upgrades') updateUpgradeStates();
     if (activeTab === 'stats') renderStats();
     if (activeTab === 'prestige') renderPrestige();
   }
