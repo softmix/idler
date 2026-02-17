@@ -1,0 +1,1569 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Station Siege</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Michroma&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #07070e;
+  --surface: #0d0d1a;
+  --surface2: #161630;
+  --accent: #ff4444;
+  --cyan: #00e8fc;
+  --orange: #f0a040;
+  --green: #44ff88;
+  --text: #c0c0d4;
+  --muted: #3e3e5c;
+}
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'DM Mono', monospace;
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 1rem;
+  background: var(--surface);
+  border-bottom: 1px solid var(--surface2);
+  flex-shrink: 0;
+}
+.title {
+  font-family: 'Michroma', sans-serif;
+  font-size: 0.75rem;
+  letter-spacing: 0.4em;
+  color: var(--accent);
+  text-shadow: 0 0 30px rgba(255,68,68,0.3);
+}
+.resources {
+  display: flex;
+  gap: 1.2rem;
+  font-size: 0.7rem;
+}
+.res { display: flex; flex-direction: column; align-items: flex-end; line-height: 1.3; }
+.res-label { font-size: 0.5rem; letter-spacing: 0.15em; }
+.res-val { font-weight: 500; }
+main {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+.canvas-wrap {
+  flex: 0 0 62%;
+  position: relative;
+  background: #030308;
+  overflow: hidden;
+}
+.canvas-wrap::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.06) 2px, rgba(0,0,0,0.06) 4px);
+  pointer-events: none;
+}
+canvas { display: block; width: 100%; height: 100%; }
+.panel {
+  flex: 0 0 38%;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border-left: 1px solid var(--surface2);
+  min-width: 0;
+}
+.tabs {
+  display: flex;
+  border-bottom: 1px solid var(--surface2);
+  flex-shrink: 0;
+}
+.tab {
+  flex: 1;
+  padding: 0.5rem 0;
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-family: 'DM Mono', monospace;
+  font-size: 0.6rem;
+  letter-spacing: 0.1em;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all 0.15s;
+}
+.tab:hover { color: var(--text); }
+.tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+#tab-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0.6rem;
+}
+#tab-content::-webkit-scrollbar { width: 4px; }
+#tab-content::-webkit-scrollbar-thumb { background: var(--surface2); border-radius: 2px; }
+.bld-card {
+  background: var(--surface2);
+  border: 1px solid #1e1e40;
+  border-radius: 4px;
+  padding: 0.5rem 0.6rem;
+  margin-bottom: 0.4rem;
+  cursor: pointer;
+  transition: all 0.12s;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.bld-card:hover { border-color: #2e2e50; transform: translateX(2px); }
+.bld-card.disabled { opacity: 0.4; cursor: default; transform: none; }
+.bld-name { font-size: 0.7rem; font-weight: 500; }
+.bld-desc { font-size: 0.55rem; color: var(--muted); margin-top: 0.15rem; }
+.bld-cost { font-size: 0.65rem; font-weight: 500; white-space: nowrap; margin-left: 0.5rem; }
+.bld-count { font-size: 0.55rem; color: var(--muted); }
+.upg-card {
+  background: var(--surface2);
+  border: 1px solid #1e1e40;
+  border-radius: 4px;
+  padding: 0.5rem 0.6rem;
+  margin-bottom: 0.4rem;
+}
+.upg-header { display: flex; justify-content: space-between; align-items: center; }
+.upg-name { font-size: 0.65rem; font-weight: 500; }
+.upg-level { font-size: 0.55rem; color: var(--muted); }
+.upg-bar { height: 3px; background: #1a1a30; border-radius: 2px; margin: 0.3rem 0; }
+.upg-fill { height: 100%; border-radius: 2px; transition: width 0.2s; }
+.upg-btn {
+  display: inline-block;
+  padding: 0.2rem 0.5rem;
+  background: var(--surface);
+  border: 1px solid #2e2e50;
+  border-radius: 3px;
+  color: var(--text);
+  font-family: 'DM Mono', monospace;
+  font-size: 0.55rem;
+  cursor: pointer;
+  transition: all 0.12s;
+}
+.upg-btn:hover:not(.disabled) { border-color: var(--orange); color: var(--orange); }
+.upg-btn.disabled { opacity: 0.3; cursor: default; }
+.skill-branch { margin-bottom: 0.6rem; }
+.skill-branch-name {
+  font-size: 0.6rem;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  margin-bottom: 0.3rem;
+  padding-bottom: 0.15rem;
+  border-bottom: 1px solid var(--surface2);
+}
+.skill-node {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.3rem 0.4rem;
+  margin-bottom: 0.2rem;
+  background: var(--surface);
+  border-radius: 3px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.12s;
+}
+.skill-node:hover:not(.maxed):not(.locked) { border-color: #2e2e50; }
+.skill-node.maxed { opacity: 0.6; cursor: default; }
+.skill-node.locked { opacity: 0.35; cursor: default; }
+.skill-info { flex: 1; min-width: 0; }
+.skill-name { font-size: 0.6rem; }
+.skill-desc { font-size: 0.5rem; color: var(--muted); }
+.skill-pips { display: flex; gap: 3px; margin-left: 0.4rem; }
+.pip { width: 6px; height: 6px; border-radius: 50%; border: 1px solid var(--muted); }
+.pip.filled { border-color: currentColor; background: currentColor; }
+.skill-cost { font-size: 0.55rem; margin-left: 0.4rem; white-space: nowrap; }
+.sp-header {
+  font-size: 0.65rem;
+  color: var(--cyan);
+  margin-bottom: 0.5rem;
+  text-align: center;
+}
+.stats-section { margin-bottom: 0.6rem; }
+.stats-title {
+  font-size: 0.6rem;
+  color: var(--muted);
+  letter-spacing: 0.1em;
+  margin-bottom: 0.2rem;
+  border-bottom: 1px solid var(--surface2);
+  padding-bottom: 0.15rem;
+}
+.stat-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.6rem;
+  padding: 0.15rem 0;
+}
+.stat-val { font-weight: 500; }
+#overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(3,3,8,0.92);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  backdrop-filter: blur(4px);
+}
+#overlay.hidden { display: none; }
+.go-box {
+  background: var(--surface);
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  padding: 1.5rem 2rem;
+  text-align: center;
+  max-width: 360px;
+  width: 90%;
+}
+.go-title {
+  font-family: 'Michroma', sans-serif;
+  font-size: 0.9rem;
+  color: var(--accent);
+  letter-spacing: 0.3em;
+  margin-bottom: 1rem;
+}
+.go-stats { margin-bottom: 1rem; }
+.go-stat {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.65rem;
+  padding: 0.2rem 0;
+  border-bottom: 1px solid var(--surface2);
+}
+.go-sp {
+  font-size: 0.85rem;
+  color: var(--cyan);
+  margin: 0.8rem 0;
+  font-weight: 500;
+}
+.go-buttons { display: flex; gap: 0.5rem; justify-content: center; }
+.go-btn {
+  padding: 0.4rem 1rem;
+  background: var(--surface2);
+  border: 1px solid #2e2e50;
+  border-radius: 4px;
+  color: var(--text);
+  font-family: 'DM Mono', monospace;
+  font-size: 0.65rem;
+  cursor: pointer;
+  transition: all 0.12s;
+}
+.go-btn:hover { border-color: var(--accent); color: var(--accent); }
+.go-btn.primary { border-color: var(--accent); color: var(--accent); }
+.version {
+  position: fixed;
+  bottom: 0.3rem;
+  right: 0.5rem;
+  font-size: 0.5rem;
+  color: var(--muted);
+  z-index: 10;
+}
+.wave-announce {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-family: 'Michroma', sans-serif;
+  font-size: 1.2rem;
+  letter-spacing: 0.3em;
+  pointer-events: none;
+  z-index: 5;
+  text-shadow: 0 0 20px currentColor;
+  transition: opacity 0.5s;
+}
+.empty-msg {
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.6rem;
+  padding: 1.5rem 0;
+}
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <div class="title">STATION SIEGE</div>
+    <div class="resources">
+      <div class="res">
+        <span class="res-label" style="color:var(--cyan)">ENERGY</span>
+        <span class="res-val" id="r-energy" style="color:var(--cyan)">0</span>
+      </div>
+      <div class="res">
+        <span class="res-label" style="color:var(--orange)">SCRAP</span>
+        <span class="res-val" id="r-scrap" style="color:var(--orange)">0</span>
+      </div>
+      <div class="res">
+        <span class="res-label" style="color:var(--text)">WAVE</span>
+        <span class="res-val" id="r-wave">0</span>
+      </div>
+      <div class="res">
+        <span class="res-label" style="color:var(--muted)">NEXT</span>
+        <span class="res-val" id="r-timer">20s</span>
+      </div>
+    </div>
+  </header>
+  <main>
+    <div class="canvas-wrap">
+      <canvas id="game"></canvas>
+      <div id="wave-ann" class="wave-announce" style="opacity:0"></div>
+    </div>
+    <div class="panel">
+      <div class="tabs">
+        <button class="tab active" data-tab="build">Build</button>
+        <button class="tab" data-tab="upgrade">Upgrade</button>
+        <button class="tab" data-tab="skills">Skills</button>
+        <button class="tab" data-tab="stats">Stats</button>
+      </div>
+      <div id="tab-content"></div>
+    </div>
+  </main>
+</div>
+<div id="overlay" class="hidden"></div>
+<div class="version">v0.1</div>
+
+<script>
+(() => {
+'use strict';
+
+// ─── CONSTANTS ─────────────────────────────────────────
+const CW = 700, CH = 520;
+const PLANET_CX = CW / 2, PLANET_CY = CH + 340, PLANET_R = 420;
+const SX = CW / 2, SY = CH * 0.36;
+const SHIELD_R = 36;
+const BUILD_R = 56;
+const MINE_RING_R = 100;
+const SAVE_KEY = 'stationsiege_v1';
+const GOLDEN_ANGLE = 2.39996323;
+
+// ─── BUILDING DEFINITIONS ──────────────────────────────
+const BLDG = {
+  pulse:    { name: 'Pulse Turret',     base: 25,  desc: 'Moderate DPS, targets nearest',    color: '#00e8fc', range: 160, damage: 8,  cd: 1.0,  type: 'weapon' },
+  railgun:  { name: 'Railgun',          base: 80,  desc: 'Slow, high damage, targets strongest', color: '#ff6666', range: 250, damage: 50, cd: 3.0,  type: 'weapon' },
+  flak:     { name: 'Flak Cannon',      base: 60,  desc: 'AoE cone, good vs swarms',         color: '#f0a040', range: 130, damage: 12, cd: 1.5,  type: 'weapon' },
+  mine:     { name: 'Mine Layer',       base: 40,  desc: 'Deploys mines around station',      color: '#ff44ff', range: 0,   damage: 30, cd: 5.0,  type: 'weapon' },
+  shieldgen:{ name: 'Shield Generator', base: 100, desc: 'Regenerates shield HP',             color: '#44ff88', regen: 2,   maxAdd: 10, type: 'utility' },
+  reactor:  { name: 'Reactor',          base: 50,  desc: 'Generates Energy per second',       color: '#ffff44', output: 3,  type: 'utility' },
+};
+
+// ─── ENEMY DEFINITIONS ─────────────────────────────────
+const ENEMY = {
+  drone:       { name: 'Drone',       hp: 10,  hpScale: 3,  dmg: 5,  scrap: [2,4],   speed: 70,  radius: 4,  color: '#ff4444', shape: 'circle',  wave: 1 },
+  cruiser:     { name: 'Cruiser',     hp: 40,  hpScale: 8,  dmg: 15, scrap: [8,12],   speed: 50,  radius: 8,  color: '#ffcc00', shape: 'ring',    wave: 4 },
+  bomber:      { name: 'Bomber',      hp: 60,  hpScale: 12, dmg: 30, scrap: [15,20],  speed: 55,  radius: 9,  color: '#ff8844', shape: 'tri',     wave: 8 },
+  dreadnought: { name: 'Dreadnought', hp: 200, hpScale: 30, dmg: 50, scrap: [40,60],  speed: 35,  radius: 14, color: '#aa44ff', shape: 'hex',     wave: 15 },
+};
+
+// ─── SKILL TREE ────────────────────────────────────────
+const SKILL_TREE = {
+  hull: {
+    name: 'Hull', color: '#44ff88',
+    nodes: [
+      { id: 'hull_1', name: 'Reinforced Hull',  desc: '+10% max shield/rank',   maxRank: 5, cost: 2 },
+      { id: 'hull_2', name: 'Shield Matrix',    desc: '+15% shield regen/rank', maxRank: 5, cost: 4 },
+      { id: 'hull_3', name: 'Ablative Armor',   desc: '-8% damage taken/rank',  maxRank: 5, cost: 6 },
+      { id: 'hull_cap', name: 'Last Stand',     desc: 'Survive one lethal hit', maxRank: 1, cost: 24, capstone: true },
+    ]
+  },
+  weapons: {
+    name: 'Weapons', color: '#ff6666',
+    nodes: [
+      { id: 'wep_1', name: 'Overcharge',      desc: '+10% damage/rank',     maxRank: 5, cost: 2 },
+      { id: 'wep_2', name: 'Rapid Cycling',   desc: '+8% fire rate/rank',   maxRank: 5, cost: 4 },
+      { id: 'wep_3', name: 'Critical Systems', desc: '+5% crit chance/rank', maxRank: 5, cost: 6 },
+      { id: 'wep_cap', name: 'Decimator',     desc: 'Every 10th shot: 5x',  maxRank: 1, cost: 24, capstone: true },
+    ]
+  },
+  economy: {
+    name: 'Economy', color: '#ffff44',
+    nodes: [
+      { id: 'eco_1', name: 'Reactor Boost',     desc: '+15% reactor output/rank', maxRank: 5, cost: 2 },
+      { id: 'eco_2', name: 'Salvage Expert',    desc: '+12% scrap drops/rank',    maxRank: 5, cost: 4 },
+      { id: 'eco_3', name: 'Emergency Reserves', desc: '+30 starting energy/rank', maxRank: 5, cost: 6 },
+      { id: 'eco_cap', name: 'Compound Interest', desc: '+1% energy/wave survived', maxRank: 1, cost: 24, capstone: true },
+    ]
+  },
+  tactical: {
+    name: 'Tactical', color: '#cc66ff',
+    nodes: [
+      { id: 'tac_1', name: 'Heavy Ordinance', desc: '+15% mine damage/rank',      maxRank: 5, cost: 2 },
+      { id: 'tac_2', name: 'Wide Spread',     desc: '+10% flak cone/rank',        maxRank: 5, cost: 4 },
+      { id: 'tac_3', name: 'Anti-Capital',    desc: '+10% vs dreadnoughts/rank',  maxRank: 5, cost: 6 },
+      { id: 'tac_cap', name: 'EMP Burst',     desc: 'AoE stun every 5 waves',     maxRank: 1, cost: 24, capstone: true },
+    ]
+  },
+};
+
+// ─── GAME STATE ────────────────────────────────────────
+function freshState() {
+  return {
+    energy: 50, scrap: 0,
+    shield: 100, maxShield: 100,
+    wave: 0, waveTimer: 20, waveActive: false,
+    buildings: [], buildCounts: {}, buildLevels: {},
+    enemies: [], projectiles: [], mines: [],
+    particles: [], floats: [], hitscanLines: [],
+    shotCount: 0, lastStandAvailable: false,
+    empCooldown: 0,
+    gameOver: false,
+    runStats: { enemiesKilled: 0, scrapEarned: 0, startTime: Date.now() },
+    // Prestige (persistent)
+    totalSP: 0, skills: {},
+    lifeStats: { runs: 0, totalKills: 0, totalScrap: 0, highWave: 0, totalSP: 0 },
+  };
+}
+
+let G = freshState();
+window._G = G; // debug access
+
+// ─── CANVAS SETUP ──────────────────────────────────────
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+canvas.width = CW;
+canvas.height = CH;
+
+// Stars
+const stars = Array.from({ length: 180 }, () => ({
+  x: Math.random() * CW, y: Math.random() * CH,
+  s: Math.random() * 1.5 + 0.5,
+  b: Math.random() * 0.5 + 0.3,
+}));
+let starAngle = 0;
+
+// Pre-render planet
+let planetCanvas;
+function initPlanet() {
+  planetCanvas = document.createElement('canvas');
+  planetCanvas.width = CW;
+  planetCanvas.height = CH;
+  const pc = planetCanvas.getContext('2d');
+  const grd = pc.createRadialGradient(PLANET_CX, PLANET_CY, PLANET_R * 0.85, PLANET_CX, PLANET_CY, PLANET_R);
+  grd.addColorStop(0, '#0a1628');
+  grd.addColorStop(0.7, '#0d2040');
+  grd.addColorStop(0.9, '#1a3a60');
+  grd.addColorStop(1, 'transparent');
+  pc.beginPath();
+  pc.arc(PLANET_CX, PLANET_CY, PLANET_R, 0, Math.PI * 2);
+  pc.fillStyle = grd;
+  pc.fill();
+  // Atmosphere glow
+  const atm = pc.createRadialGradient(PLANET_CX, PLANET_CY, PLANET_R - 5, PLANET_CX, PLANET_CY, PLANET_R + 20);
+  atm.addColorStop(0, 'transparent');
+  atm.addColorStop(0.5, 'rgba(60,140,255,0.08)');
+  atm.addColorStop(1, 'transparent');
+  pc.beginPath();
+  pc.arc(PLANET_CX, PLANET_CY, PLANET_R + 20, 0, Math.PI * 2);
+  pc.fillStyle = atm;
+  pc.fill();
+}
+
+// ─── HELPERS ───────────────────────────────────────────
+function dist(x1, y1, x2, y2) { return Math.hypot(x2 - x1, y2 - y1); }
+function angle(x1, y1, x2, y2) { return Math.atan2(y2 - y1, x2 - x1); }
+function rand(a, b) { return a + Math.random() * (b - a); }
+function randInt(a, b) { return Math.floor(rand(a, b + 1)); }
+function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+function lerp(a, b, t) { return a + (b - a) * t; }
+function fmtNum(n) { return n >= 1e6 ? (n/1e6).toFixed(1)+'M' : n >= 1e4 ? (n/1e3).toFixed(1)+'K' : Math.floor(n).toString(); }
+
+function skill(id) { return G.skills[id] || 0; }
+
+function dmgMult(enemyType) {
+  let m = 1 + skill('wep_1') * 0.10;
+  if (enemyType === 'dreadnought') m *= 1 + skill('tac_3') * 0.10;
+  return m;
+}
+function critChance() { return skill('wep_3') * 0.05; }
+function fireRateMult() { return 1 + skill('wep_2') * 0.08; }
+function reactorMult() {
+  let m = 1 + skill('eco_1') * 0.15;
+  if (skill('eco_cap') >= 1) m *= 1 + G.wave * 0.01;
+  return m;
+}
+function scrapMult() { return 1 + skill('eco_2') * 0.12; }
+function shieldRegenMult() { return 1 + skill('hull_2') * 0.15; }
+function dmgReduction() { return 1 - skill('hull_3') * 0.08; }
+function maxShieldMult() { return 1 + skill('hull_1') * 0.10; }
+function mineDmgMult() { return 1 + skill('tac_1') * 0.15; }
+function flakConeMult() { return 1 + skill('tac_2') * 0.10; }
+function startingEnergy() { return 50 + skill('eco_3') * 30; }
+
+// ─── SAVE / LOAD ───────────────────────────────────────
+function save() {
+  const d = {
+    v: 1, energy: G.energy, scrap: G.scrap, shield: G.shield, maxShield: G.maxShield,
+    wave: G.wave, waveTimer: G.waveTimer, gameOver: G.gameOver,
+    buildings: G.buildings.map(b => ({ type: b.type, angle: b.angle })),
+    buildCounts: G.buildCounts, buildLevels: G.buildLevels,
+    totalSP: G.totalSP, skills: G.skills,
+    lifeStats: G.lifeStats,
+    runStats: G.runStats,
+    shotCount: G.shotCount,
+    lastStandAvailable: G.lastStandAvailable,
+    ts: Date.now(),
+  };
+  localStorage.setItem(SAVE_KEY, JSON.stringify(d));
+}
+
+function load() {
+  const raw = localStorage.getItem(SAVE_KEY);
+  if (!raw) return false;
+  try {
+    const d = JSON.parse(raw);
+    G.energy = d.energy ?? 50;
+    G.scrap = d.scrap ?? 0;
+    G.shield = d.shield ?? 100;
+    G.maxShield = d.maxShield ?? 100;
+    G.wave = d.wave ?? 0;
+    G.waveTimer = d.waveTimer ?? 20;
+    G.buildCounts = d.buildCounts ?? {};
+    G.buildLevels = d.buildLevels ?? {};
+    G.totalSP = d.totalSP ?? 0;
+    G.skills = d.skills ?? {};
+    G.lifeStats = d.lifeStats ?? { runs: 0, totalKills: 0, totalScrap: 0, highWave: 0, totalSP: 0 };
+    G.runStats = d.runStats ?? { enemiesKilled: 0, scrapEarned: 0, startTime: Date.now() };
+    G.shotCount = d.shotCount ?? 0;
+    G.lastStandAvailable = d.lastStandAvailable ?? (skill('hull_cap') >= 1);
+    G.gameOver = d.gameOver ?? false;
+    // Rebuild buildings
+    G.buildings = (d.buildings || []).map(b => makeBuilding(b.type, b.angle));
+    // Offline energy
+    if (d.ts) {
+      const secs = Math.min((Date.now() - d.ts) / 1000, 4 * 3600);
+      const rCount = G.buildCounts.reactor || 0;
+      const rLevel = G.buildLevels.reactor || 1;
+      const eps = BLDG.reactor.output * rLevel * rCount * reactorMult() * 0.3;
+      if (eps > 0 && secs > 5) G.energy += eps * secs;
+    }
+    return true;
+  } catch(e) { return false; }
+}
+
+// ─── BUILDING SYSTEM ───────────────────────────────────
+function buildCost(type) {
+  const count = G.buildCounts[type] || 0;
+  return Math.ceil(BLDG[type].base * Math.pow(1.5, count));
+}
+
+function upgradeCost(type) {
+  const lv = G.buildLevels[type] || 1;
+  if (lv >= 5) return Infinity;
+  return [0, 15, 35, 75, 150][lv];
+}
+
+function makeBuilding(type, bAngle) {
+  return {
+    type, angle: bAngle,
+    x: SX + Math.cos(bAngle) * BUILD_R,
+    y: SY + Math.sin(bAngle) * BUILD_R,
+    cdTimer: 0, // cooldown timer
+  };
+}
+
+function buildBuilding(type) {
+  const cost = buildCost(type);
+  if (G.energy < cost) return;
+  G.energy -= cost;
+  const idx = G.buildings.length;
+  const bAngle = idx * GOLDEN_ANGLE;
+  G.buildings.push(makeBuilding(type, bAngle));
+  G.buildCounts[type] = (G.buildCounts[type] || 0) + 1;
+  if (!G.buildLevels[type]) G.buildLevels[type] = 1;
+  uiDirty = true;
+}
+
+function upgradeBuilding(type) {
+  const cost = upgradeCost(type);
+  if (G.scrap < cost || (G.buildLevels[type] || 1) >= 5) return;
+  G.scrap -= cost;
+  G.buildLevels[type] = (G.buildLevels[type] || 1) + 1;
+  // Update max shield if shield generator
+  if (type === 'shieldgen') recalcMaxShield();
+  uiDirty = true;
+}
+
+function recalcMaxShield() {
+  const count = G.buildCounts.shieldgen || 0;
+  const lv = G.buildLevels.shieldgen || 1;
+  G.maxShield = (100 + count * BLDG.shieldgen.maxAdd * lv) * maxShieldMult();
+  G.shield = Math.min(G.shield, G.maxShield);
+}
+
+function levelMult(type) { return Math.pow(1.3, (G.buildLevels[type] || 1) - 1); }
+
+// ─── ENEMY SYSTEM ──────────────────────────────────────
+function enemyHP(type, wave) { return ENEMY[type].hp + ENEMY[type].hpScale * wave; }
+
+function spawnEnemy(type) {
+  const def = ENEMY[type];
+  const counterOrbit = Math.random() < 0.4;
+  // Spawn at canvas edge
+  const spawnAngle = Math.random() * Math.PI * 2;
+  const spawnDist = Math.max(CW, CH) * 0.72;
+  const sx = CW / 2 + Math.cos(spawnAngle) * spawnDist;
+  const sy = CH / 2 + Math.sin(spawnAngle) * spawnDist;
+  // Velocity toward station with tangential offset for curve
+  const toStation = angle(sx, sy, SX, SY);
+  const speed = counterOrbit ? def.speed * 2.5 : def.speed;
+  const offset = counterOrbit ? (Math.random() < 0.5 ? -0.7 : 0.7) : rand(-0.25, 0.25);
+  const hp = enemyHP(type, G.wave);
+  return {
+    type, x: sx, y: sy,
+    vx: Math.cos(toStation + offset) * speed,
+    vy: Math.sin(toStation + offset) * speed,
+    hp, maxHp: hp,
+    shieldHp: type === 'dreadnought' ? hp * 0.4 : 0,
+    maxShieldHp: type === 'dreadnought' ? hp * 0.4 : 0,
+    counterOrbit, radius: def.radius,
+    trail: [],
+    stunTimer: 0,
+    hitFlash: 0,
+  };
+}
+
+function updateEnemies(dt) {
+  const gravity = 40;
+  const seek = 18;
+  const drag = 0.99;
+
+  for (let i = G.enemies.length - 1; i >= 0; i--) {
+    const e = G.enemies[i];
+    if (e.stunTimer > 0) { e.stunTimer -= dt; continue; }
+
+    // Gravity toward planet center
+    const gdx = PLANET_CX - e.x, gdy = PLANET_CY - e.y;
+    const gd = Math.hypot(gdx, gdy);
+    const gf = gravity / Math.max(gd / 200, 1);
+    e.vx += (gdx / gd) * gf * dt;
+    e.vy += (gdy / gd) * gf * dt;
+
+    // Seek toward station
+    const sdx = SX - e.x, sdy = SY - e.y;
+    const sd = Math.hypot(sdx, sdy);
+    if (sd > 5) {
+      e.vx += (sdx / sd) * seek * dt;
+      e.vy += (sdy / sd) * seek * dt;
+    }
+
+    // Speed cap
+    const spd = Math.hypot(e.vx, e.vy);
+    const maxSpd = e.counterOrbit ? 280 : 140;
+    if (spd > maxSpd) { e.vx *= maxSpd / spd; e.vy *= maxSpd / spd; }
+    e.vx *= drag; e.vy *= drag;
+
+    e.x += e.vx * dt;
+    e.y += e.vy * dt;
+
+    // Trail
+    e.trail.push({ x: e.x, y: e.y });
+    if (e.trail.length > 12) e.trail.shift();
+
+    if (e.hitFlash > 0) e.hitFlash -= dt;
+
+    // Collision with station
+    if (dist(e.x, e.y, SX, SY) < SHIELD_R + e.radius) {
+      damageStation(ENEMY[e.type].dmg);
+      spawnParticles(e.x, e.y, 6, ENEMY[e.type].color);
+      G.enemies.splice(i, 1);
+      continue;
+    }
+
+    // Remove if way off screen
+    if (e.x < -200 || e.x > CW + 200 || e.y < -200 || e.y > CH + 200) {
+      G.enemies.splice(i, 1);
+    }
+  }
+}
+
+function damageEnemy(e, dmg, isMine) {
+  // Dreadnought shield absorbs first
+  if (e.shieldHp > 0) {
+    const absorbed = Math.min(e.shieldHp, dmg);
+    e.shieldHp -= absorbed;
+    dmg -= absorbed;
+  }
+  e.hp -= dmg;
+  e.hitFlash = 0.1;
+  if (e.hp <= 0) {
+    killEnemy(e);
+    return true;
+  }
+  return false;
+}
+
+function killEnemy(e) {
+  const def = ENEMY[e.type];
+  const base = randInt(def.scrap[0], def.scrap[1]);
+  const isSurge = G.wave % 10 === 0;
+  const scrap = Math.ceil(base * scrapMult() * (isSurge ? 1.5 : 1));
+  G.scrap += scrap;
+  G.runStats.scrapEarned += scrap;
+  G.runStats.enemiesKilled++;
+  G.lifeStats.totalKills++;
+  G.lifeStats.totalScrap += scrap;
+  spawnParticles(e.x, e.y, 10, def.color);
+  addFloat(e.x, e.y - 10, '+' + scrap, '#f0a040');
+  // Remove from array (caller handles splice)
+  const idx = G.enemies.indexOf(e);
+  if (idx !== -1) G.enemies.splice(idx, 1);
+  uiDirty = true;
+}
+
+// ─── WAVE SYSTEM ───────────────────────────────────────
+function waveInterval() { return Math.max(8, 20 - G.wave * 0.4); }
+
+function tickWave(dt) {
+  G.waveTimer -= dt;
+  if (G.waveTimer <= 0) {
+    G.wave++;
+    G.lifeStats.highWave = Math.max(G.lifeStats.highWave, G.wave);
+    spawnWave();
+    G.waveTimer = waveInterval();
+    showWaveAnnounce();
+    // EMP Burst
+    if (skill('tac_cap') >= 1 && G.wave % 5 === 0) {
+      G.enemies.forEach(e => e.stunTimer = 3);
+      addFloat(SX, SY - 50, 'EMP BURST', '#cc66ff');
+    }
+    uiDirty = true;
+  }
+}
+
+function spawnWave() {
+  const count = Math.floor(3 + G.wave * 1.2);
+  const isSurge = G.wave % 10 === 0;
+  const n = isSurge ? count * 2 : count;
+  for (let i = 0; i < n; i++) {
+    const type = pickEnemyType();
+    // Stagger spawn slightly
+    setTimeout(() => {
+      if (!G.gameOver) G.enemies.push(spawnEnemy(type));
+    }, i * 200);
+  }
+}
+
+function pickEnemyType() {
+  const w = G.wave;
+  const r = Math.random();
+  if (w >= 15 && r < 0.15) return 'dreadnought';
+  if (w >= 8 && r < 0.40) return 'bomber';
+  if (w >= 4 && r < 0.65) return 'cruiser';
+  return 'drone';
+}
+
+let waveAnnTimer = 0;
+function showWaveAnnounce() {
+  const el = document.getElementById('wave-ann');
+  const isSurge = G.wave % 10 === 0;
+  el.textContent = isSurge ? `★ SURGE WAVE ${G.wave} ★` : `WAVE ${G.wave}`;
+  el.style.color = isSurge ? '#ff4444' : '#ffffff';
+  el.style.opacity = '1';
+  waveAnnTimer = 2;
+}
+
+// ─── COMBAT SYSTEM ─────────────────────────────────────
+function tickCombat(dt) {
+  for (const b of G.buildings) {
+    const def = BLDG[b.type];
+    if (def.type !== 'weapon') continue;
+    b.cdTimer -= dt * fireRateMult();
+    if (b.cdTimer > 0) continue;
+
+    if (b.type === 'mine') {
+      layMine(b);
+      b.cdTimer = def.cd;
+      continue;
+    }
+
+    const target = findTarget(b);
+    if (!target) continue;
+
+    b.cdTimer = def.cd;
+    fireTurret(b, target);
+  }
+
+  updateProjectiles(dt);
+  tickMines(dt);
+}
+
+function findTarget(b) {
+  const def = BLDG[b.type];
+  const range = def.range * levelMult(b.type);
+  let best = null, bestVal = b.type === 'railgun' ? -1 : Infinity;
+
+  for (const e of G.enemies) {
+    const d = dist(b.x, b.y, e.x, e.y);
+    if (d > range) continue;
+    if (b.type === 'railgun') {
+      if (e.hp > bestVal) { best = e; bestVal = e.hp; }
+    } else {
+      if (d < bestVal) { best = e; bestVal = d; }
+    }
+  }
+  return best;
+}
+
+function fireTurret(b, target) {
+  const def = BLDG[b.type];
+  G.shotCount++;
+  const isDecimator = skill('wep_cap') >= 1 && G.shotCount % 10 === 0;
+  const baseDmg = def.damage * levelMult(b.type) * dmgMult(target.type);
+  const isCrit = Math.random() < critChance();
+  const finalDmg = baseDmg * (isCrit ? 2 : 1) * (isDecimator ? 5 : 1);
+
+  if (b.type === 'railgun') {
+    // Hitscan
+    damageEnemy(target, finalDmg);
+    G.hitscanLines.push({ x1: b.x, y1: b.y, x2: target.x, y2: target.y, timer: 0.2, color: def.color });
+    if (isCrit) addFloat(target.x, target.y - 15, 'CRIT', '#ffff00');
+    if (isDecimator) addFloat(target.x, target.y - 25, '5x!', '#ff00ff');
+  } else if (b.type === 'flak') {
+    // Cone spray
+    const a = angle(b.x, b.y, target.x, target.y);
+    const cone = (Math.PI / 6) * flakConeMult();
+    const pellets = 7;
+    for (let i = 0; i < pellets; i++) {
+      const pa = a + rand(-cone, cone);
+      const speed = 350;
+      G.projectiles.push({
+        x: b.x, y: b.y,
+        vx: Math.cos(pa) * speed, vy: Math.sin(pa) * speed,
+        dmg: finalDmg / pellets, color: def.color, radius: 2,
+        life: 0.35, fromType: b.type,
+      });
+    }
+  } else {
+    // Pulse — projectile
+    const a = angle(b.x, b.y, target.x, target.y);
+    const speed = 400;
+    G.projectiles.push({
+      x: b.x, y: b.y,
+      vx: Math.cos(a) * speed, vy: Math.sin(a) * speed,
+      dmg: finalDmg, color: def.color, radius: 3,
+      life: 0.8, fromType: b.type,
+    });
+    if (isCrit) addFloat(b.x, b.y - 15, 'CRIT', '#ffff00');
+    if (isDecimator) addFloat(b.x, b.y - 25, '5x!', '#ff00ff');
+  }
+}
+
+function updateProjectiles(dt) {
+  for (let i = G.projectiles.length - 1; i >= 0; i--) {
+    const p = G.projectiles[i];
+    p.x += p.vx * dt;
+    p.y += p.vy * dt;
+    p.life -= dt;
+    if (p.life <= 0) { G.projectiles.splice(i, 1); continue; }
+    // Hit enemies
+    for (const e of G.enemies) {
+      if (dist(p.x, p.y, e.x, e.y) < e.radius + p.radius) {
+        damageEnemy(e, p.dmg);
+        spawnParticles(p.x, p.y, 3, p.color);
+        G.projectiles.splice(i, 1);
+        break;
+      }
+    }
+  }
+  // Hitscan line decay
+  for (let i = G.hitscanLines.length - 1; i >= 0; i--) {
+    G.hitscanLines[i].timer -= dt;
+    if (G.hitscanLines[i].timer <= 0) G.hitscanLines.splice(i, 1);
+  }
+}
+
+function layMine(b) {
+  const mAngle = Math.random() * Math.PI * 2;
+  const mr = MINE_RING_R + rand(-20, 20);
+  G.mines.push({
+    x: SX + Math.cos(mAngle) * mr,
+    y: SY + Math.sin(mAngle) * mr,
+    dmg: BLDG.mine.damage * levelMult('mine') * mineDmgMult(),
+    blink: 0,
+  });
+  if (G.mines.length > 10) G.mines.shift();
+}
+
+function tickMines(dt) {
+  for (let i = G.mines.length - 1; i >= 0; i--) {
+    const m = G.mines[i];
+    m.blink += dt;
+    for (const e of G.enemies) {
+      if (dist(m.x, m.y, e.x, e.y) < 25) {
+        // Detonate — AoE
+        const blastR = 60;
+        for (const e2 of G.enemies) {
+          if (dist(m.x, m.y, e2.x, e2.y) < blastR) {
+            damageEnemy(e2, m.dmg);
+          }
+        }
+        spawnParticles(m.x, m.y, 15, '#ff44ff');
+        // Mine ring visual
+        G.particles.push({ x: m.x, y: m.y, vx: 0, vy: 0, life: 0.4, maxLife: 0.4, color: '#ff44ff', ring: blastR });
+        G.mines.splice(i, 1);
+        break;
+      }
+    }
+  }
+}
+
+// ─── RESOURCE SYSTEM ───────────────────────────────────
+function tickResources(dt) {
+  // Reactor energy
+  const rCount = G.buildCounts.reactor || 0;
+  const rLevel = G.buildLevels.reactor || 1;
+  const eps = BLDG.reactor.output * levelMult('reactor') * rCount * reactorMult();
+  G.energy += eps * dt;
+
+  // Shield regen
+  const sgCount = G.buildCounts.shieldgen || 0;
+  const sgLevel = G.buildLevels.shieldgen || 1;
+  if (sgCount > 0) {
+    const regen = BLDG.shieldgen.regen * levelMult('shieldgen') * sgCount * shieldRegenMult();
+    G.shield = Math.min(G.maxShield, G.shield + regen * dt);
+  }
+}
+
+// ─── DAMAGE / DEATH ────────────────────────────────────
+let shieldFlash = 0;
+function damageStation(amount) {
+  amount *= dmgReduction();
+  if (G.shield - amount <= 0 && G.lastStandAvailable) {
+    G.shield = 1;
+    G.lastStandAvailable = false;
+    addFloat(SX, SY - 40, 'LAST STAND!', '#44ff88');
+    shieldFlash = 0.5;
+    return;
+  }
+  G.shield -= amount;
+  shieldFlash = 0.3;
+  if (G.shield <= 0) {
+    G.shield = 0;
+    triggerGameOver();
+  }
+}
+
+function triggerGameOver() {
+  G.gameOver = true;
+  const sp = calcSP();
+  G.totalSP += sp;
+  G.lifeStats.totalSP += sp;
+  G.lifeStats.runs++;
+  save();
+  showGameOver(sp);
+}
+
+function calcSP() {
+  return Math.floor(Math.sqrt(G.wave * G.runStats.enemiesKilled / 10));
+}
+
+function showGameOver(sp) {
+  const el = document.getElementById('overlay');
+  el.classList.remove('hidden');
+  const duration = Math.floor((Date.now() - G.runStats.startTime) / 1000);
+  const mins = Math.floor(duration / 60);
+  const secs = duration % 60;
+  el.innerHTML = `<div class="go-box">
+    <div class="go-title">STATION DESTROYED</div>
+    <div class="go-stats">
+      <div class="go-stat"><span>Wave Reached</span><span>${G.wave}</span></div>
+      <div class="go-stat"><span>Enemies Killed</span><span>${G.runStats.enemiesKilled}</span></div>
+      <div class="go-stat"><span>Scrap Earned</span><span>${G.runStats.scrapEarned}</span></div>
+      <div class="go-stat"><span>Duration</span><span>${mins}m ${secs}s</span></div>
+    </div>
+    <div class="go-sp">+${sp} Salvage Points</div>
+    <div style="font-size:0.55rem;color:var(--muted);margin-bottom:0.8rem">Total SP: ${G.totalSP}</div>
+    <div class="go-buttons">
+      <button class="go-btn primary" onclick="startNewRun()">Retry</button>
+      <button class="go-btn" onclick="switchTab('skills');document.getElementById('overlay').classList.add('hidden')">Skill Tree</button>
+    </div>
+  </div>`;
+}
+
+// ─── PRESTIGE / NEW RUN ────────────────────────────────
+window.startNewRun = function() {
+  const sp = G.totalSP;
+  const skills = { ...G.skills };
+  const lifeStats = { ...G.lifeStats };
+  G = freshState();
+  window._G = G;
+  G.totalSP = sp;
+  G.skills = skills;
+  G.lifeStats = lifeStats;
+  G.energy = startingEnergy();
+  G.lastStandAvailable = skill('hull_cap') >= 1;
+  recalcMaxShield();
+  document.getElementById('overlay').classList.add('hidden');
+  uiDirty = true;
+  lastTime = performance.now();
+  requestAnimationFrame(gameLoop);
+  save();
+};
+
+function purchaseSkill(id) {
+  // Find node
+  let node = null;
+  for (const branch of Object.values(SKILL_TREE)) {
+    node = branch.nodes.find(n => n.id === id);
+    if (node) break;
+  }
+  if (!node) return;
+  const cur = skill(id);
+  if (cur >= node.maxRank) return;
+  if (G.totalSP < node.cost) return;
+  G.totalSP -= node.cost;
+  G.skills[id] = cur + 1;
+  // Recalc shield if hull skill
+  if (id.startsWith('hull')) recalcMaxShield();
+  uiDirty = true;
+  save();
+}
+
+// ─── EFFECTS ───────────────────────────────────────────
+function spawnParticles(x, y, count, color) {
+  for (let i = 0; i < count; i++) {
+    const a = Math.random() * Math.PI * 2;
+    const s = rand(40, 150);
+    G.particles.push({
+      x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s,
+      life: rand(0.2, 0.5), maxLife: 0.5, color, ring: 0,
+    });
+  }
+}
+
+function addFloat(x, y, text, color) {
+  G.floats.push({ x, y, text, color, life: 1.0 });
+}
+
+function updateEffects(dt) {
+  for (let i = G.particles.length - 1; i >= 0; i--) {
+    const p = G.particles[i];
+    p.x += p.vx * dt;
+    p.y += p.vy * dt;
+    p.life -= dt;
+    if (p.life <= 0) G.particles.splice(i, 1);
+  }
+  for (let i = G.floats.length - 1; i >= 0; i--) {
+    const f = G.floats[i];
+    f.y -= 30 * dt;
+    f.life -= dt;
+    if (f.life <= 0) G.floats.splice(i, 1);
+  }
+  if (shieldFlash > 0) shieldFlash -= dt;
+  if (waveAnnTimer > 0) {
+    waveAnnTimer -= dt;
+    if (waveAnnTimer <= 0) document.getElementById('wave-ann').style.opacity = '0';
+  }
+}
+
+// ─── RENDERING ─────────────────────────────────────────
+function render() {
+  ctx.clearRect(0, 0, CW, CH);
+
+  // Background
+  ctx.fillStyle = '#030308';
+  ctx.fillRect(0, 0, CW, CH);
+
+  // Stars (slow rotation for orbital feel)
+  starAngle += 0.0001;
+  ctx.save();
+  ctx.translate(CW / 2, CH / 2);
+  ctx.rotate(starAngle);
+  ctx.translate(-CW / 2, -CH / 2);
+  for (const s of stars) {
+    ctx.globalAlpha = s.b + Math.sin(performance.now() / 1000 + s.x) * 0.15;
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(s.x, s.y, s.s, s.s);
+  }
+  ctx.globalAlpha = 1;
+  ctx.restore();
+
+  // Planet
+  ctx.drawImage(planetCanvas, 0, 0);
+
+  // Mines
+  for (const m of G.mines) {
+    const bright = Math.sin(m.blink * 6) > 0;
+    ctx.fillStyle = bright ? '#ff44ff' : '#882288';
+    ctx.beginPath();
+    ctx.arc(m.x, m.y, 3, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Enemies
+  for (const e of G.enemies) {
+    drawEnemy(e);
+  }
+
+  // Station
+  drawStation();
+
+  // Buildings
+  for (const b of G.buildings) {
+    drawBuilding(b);
+  }
+
+  // Shield
+  drawShield();
+
+  // Projectiles
+  for (const p of G.projectiles) {
+    ctx.globalAlpha = clamp(p.life / 0.2, 0, 1);
+    ctx.fillStyle = p.color;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+
+  // Hitscan lines
+  for (const h of G.hitscanLines) {
+    ctx.globalAlpha = h.timer / 0.2;
+    ctx.strokeStyle = h.color;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(h.x1, h.y1);
+    ctx.lineTo(h.x2, h.y2);
+    ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+
+  // Particles
+  for (const p of G.particles) {
+    const a = p.life / p.maxLife;
+    ctx.globalAlpha = a;
+    if (p.ring) {
+      ctx.strokeStyle = p.color;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.ring * (1 - a), 0, Math.PI * 2);
+      ctx.stroke();
+    } else {
+      ctx.fillStyle = p.color;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 2 * a, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+  ctx.globalAlpha = 1;
+
+  // Floating text
+  for (const f of G.floats) {
+    ctx.globalAlpha = Math.min(1, f.life * 2);
+    ctx.fillStyle = f.color;
+    ctx.font = '10px "DM Mono"';
+    ctx.textAlign = 'center';
+    ctx.fillText(f.text, f.x, f.y);
+  }
+  ctx.globalAlpha = 1;
+
+  // Shield bar at bottom
+  drawShieldBar();
+}
+
+function drawStation() {
+  ctx.save();
+  ctx.translate(SX, SY);
+  ctx.rotate(performance.now() / 8000);
+  ctx.strokeStyle = '#00e8fc';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  for (let i = 0; i < 8; i++) {
+    const a = (Math.PI * 2 / 8) * i - Math.PI / 8;
+    const r = 18;
+    const method = i === 0 ? 'moveTo' : 'lineTo';
+    ctx[method](Math.cos(a) * r, Math.sin(a) * r);
+  }
+  ctx.closePath();
+  ctx.stroke();
+  // Inner glow
+  ctx.shadowColor = '#00e8fc';
+  ctx.shadowBlur = 10;
+  ctx.stroke();
+  ctx.shadowBlur = 0;
+  ctx.restore();
+}
+
+function drawShield() {
+  const ratio = G.shield / G.maxShield;
+  const pulse = 0.06 * Math.sin(performance.now() / 600);
+  const baseAlpha = 0.1 + ratio * 0.15 + pulse;
+  const flashAlpha = shieldFlash > 0 ? 0.4 : 0;
+
+  ctx.globalAlpha = baseAlpha + flashAlpha;
+  ctx.fillStyle = shieldFlash > 0 ? '#ffffff' : '#44ff88';
+  ctx.beginPath();
+  ctx.arc(SX, SY, SHIELD_R, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.globalAlpha = 0.3 + ratio * 0.4 + flashAlpha;
+  ctx.strokeStyle = shieldFlash > 0 ? '#ffffff' : '#44ff88';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+  ctx.globalAlpha = 1;
+}
+
+function drawBuilding(b) {
+  const def = BLDG[b.type];
+  ctx.save();
+  ctx.translate(b.x, b.y);
+  const outAngle = b.angle;
+  ctx.rotate(outAngle);
+  ctx.fillStyle = def.color;
+  ctx.strokeStyle = def.color;
+  ctx.lineWidth = 1;
+  const s = 5;
+
+  switch (b.type) {
+    case 'pulse':
+      ctx.fillRect(-s, -s/2, s*2, s);
+      break;
+    case 'railgun':
+      ctx.fillRect(-s, -s/3, s*3, s*0.66);
+      break;
+    case 'flak':
+      ctx.beginPath();
+      ctx.moveTo(s*1.5, 0);
+      ctx.lineTo(-s, -s);
+      ctx.lineTo(-s, s);
+      ctx.closePath();
+      ctx.fill();
+      break;
+    case 'mine':
+      ctx.beginPath();
+      ctx.moveTo(0, -s); ctx.lineTo(s, 0);
+      ctx.lineTo(0, s); ctx.lineTo(-s, 0);
+      ctx.closePath();
+      ctx.fill();
+      break;
+    case 'shieldgen':
+      ctx.beginPath();
+      ctx.arc(0, 0, s, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.globalAlpha = 0.3;
+      ctx.fill();
+      ctx.globalAlpha = 1;
+      break;
+    case 'reactor':
+      ctx.beginPath();
+      ctx.arc(0, 0, s, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.shadowColor = def.color;
+      ctx.shadowBlur = 8;
+      ctx.fill();
+      ctx.shadowBlur = 0;
+      break;
+  }
+  ctx.restore();
+}
+
+function drawEnemy(e) {
+  const def = ENEMY[e.type];
+  // Trail
+  if (e.trail.length > 1) {
+    ctx.strokeStyle = def.color;
+    ctx.lineWidth = 1;
+    ctx.globalAlpha = 0.15;
+    ctx.beginPath();
+    ctx.moveTo(e.trail[0].x, e.trail[0].y);
+    for (let i = 1; i < e.trail.length; i++) ctx.lineTo(e.trail[i].x, e.trail[i].y);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+  }
+
+  ctx.save();
+  ctx.translate(e.x, e.y);
+  const flash = e.hitFlash > 0;
+  ctx.fillStyle = flash ? '#ffffff' : def.color;
+  ctx.strokeStyle = flash ? '#ffffff' : def.color;
+
+  switch (def.shape) {
+    case 'circle':
+      ctx.beginPath();
+      ctx.arc(0, 0, def.radius, 0, Math.PI * 2);
+      ctx.fill();
+      break;
+    case 'ring':
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(0, 0, def.radius, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.globalAlpha = 0.3;
+      ctx.fill();
+      ctx.globalAlpha = 1;
+      break;
+    case 'tri':
+      ctx.beginPath();
+      for (let i = 0; i < 3; i++) {
+        const a = (Math.PI * 2 / 3) * i - Math.PI / 2;
+        ctx[i === 0 ? 'moveTo' : 'lineTo'](Math.cos(a) * def.radius, Math.sin(a) * def.radius);
+      }
+      ctx.closePath();
+      ctx.fill();
+      break;
+    case 'hex':
+      ctx.beginPath();
+      for (let i = 0; i < 6; i++) {
+        const a = (Math.PI / 3) * i;
+        ctx[i === 0 ? 'moveTo' : 'lineTo'](Math.cos(a) * def.radius, Math.sin(a) * def.radius);
+      }
+      ctx.closePath();
+      ctx.fill();
+      // Dreadnought shield bar
+      if (e.maxShieldHp > 0) {
+        const sw = def.radius * 2;
+        const sh = 3;
+        ctx.fillStyle = '#222';
+        ctx.fillRect(-sw/2, -def.radius - 6, sw, sh);
+        ctx.fillStyle = '#aa88ff';
+        ctx.fillRect(-sw/2, -def.radius - 6, sw * (e.shieldHp / e.maxShieldHp), sh);
+      }
+      break;
+  }
+
+  // HP bar
+  if (e.hp < e.maxHp) {
+    const w = def.radius * 2;
+    const h = 2;
+    const yOff = def.radius + 4;
+    ctx.fillStyle = '#331111';
+    ctx.fillRect(-w/2, yOff, w, h);
+    ctx.fillStyle = '#ff4444';
+    ctx.fillRect(-w/2, yOff, w * (e.hp / e.maxHp), h);
+  }
+  ctx.restore();
+}
+
+function drawShieldBar() {
+  const barW = 200, barH = 10;
+  const bx = (CW - barW) / 2, by = CH - 20;
+  ctx.fillStyle = 'rgba(0,0,0,0.5)';
+  ctx.fillRect(bx - 1, by - 1, barW + 2, barH + 2);
+  ctx.fillStyle = '#1a3322';
+  ctx.fillRect(bx, by, barW, barH);
+  const ratio = G.shield / G.maxShield;
+  const color = ratio > 0.5 ? '#44ff88' : ratio > 0.2 ? '#ffaa44' : '#ff4444';
+  ctx.fillStyle = color;
+  ctx.fillRect(bx, by, barW * ratio, barH);
+  ctx.fillStyle = '#ffffff';
+  ctx.font = '8px "DM Mono"';
+  ctx.textAlign = 'center';
+  ctx.fillText(`${Math.ceil(G.shield)} / ${Math.ceil(G.maxShield)}`, CW / 2, by + 8);
+}
+
+// ─── UI ────────────────────────────────────────────────
+let currentTab = 'build';
+let uiDirty = true;
+let uiUpdateTimer = 0;
+
+// Tab switching
+document.querySelector('.tabs').addEventListener('click', (e) => {
+  const tab = e.target.dataset.tab;
+  if (!tab) return;
+  switchTab(tab);
+});
+window.switchTab = function(tab) {
+  currentTab = tab;
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
+  uiDirty = true;
+  renderTab();
+};
+
+function updateUI() {
+  // Header - every frame
+  document.getElementById('r-energy').textContent = fmtNum(G.energy);
+  document.getElementById('r-scrap').textContent = fmtNum(G.scrap);
+  document.getElementById('r-wave').textContent = G.wave;
+  document.getElementById('r-timer').textContent = Math.ceil(G.waveTimer) + 's';
+}
+
+function renderTab() {
+  const el = document.getElementById('tab-content');
+  switch (currentTab) {
+    case 'build': el.innerHTML = renderBuildTab(); break;
+    case 'upgrade': el.innerHTML = renderUpgradeTab(); break;
+    case 'skills': el.innerHTML = renderSkillsTab(); break;
+    case 'stats': el.innerHTML = renderStatsTab(); break;
+  }
+}
+
+function renderBuildTab() {
+  return Object.entries(BLDG).map(([key, def]) => {
+    const cost = buildCost(key);
+    const count = G.buildCounts[key] || 0;
+    const canBuild = G.energy >= cost;
+    return `<div class="bld-card ${canBuild ? '' : 'disabled'}" onclick="buildB('${key}')">
+      <div>
+        <div class="bld-name" style="color:${def.color}">${def.name}</div>
+        <div class="bld-desc">${def.desc}</div>
+        ${count > 0 ? `<div class="bld-count">Owned: ${count}</div>` : ''}
+      </div>
+      <div class="bld-cost" style="color:var(--cyan)">${fmtNum(cost)}E</div>
+    </div>`;
+  }).join('');
+}
+window.buildB = function(type) { buildBuilding(type); uiDirty = true; };
+
+function renderUpgradeTab() {
+  const owned = Object.entries(G.buildCounts).filter(([, c]) => c > 0);
+  if (owned.length === 0) return '<div class="empty-msg">No buildings to upgrade.<br>Build something first!</div>';
+  return owned.map(([key, count]) => {
+    const def = BLDG[key];
+    const lv = G.buildLevels[key] || 1;
+    const cost = upgradeCost(key);
+    const maxed = lv >= 5;
+    const canUp = !maxed && G.scrap >= cost;
+    return `<div class="upg-card">
+      <div class="upg-header">
+        <span class="upg-name" style="color:${def.color}">${def.name} ×${count}</span>
+        <span class="upg-level">Lv.${lv}/5</span>
+      </div>
+      <div class="upg-bar"><div class="upg-fill" style="width:${lv*20}%;background:${def.color}"></div></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:0.3rem">
+        <span style="font-size:0.5rem;color:var(--muted)">${getUpgradeDesc(key, lv)}</span>
+        ${maxed ? '<span style="font-size:0.55rem;color:var(--muted)">MAX</span>'
+          : `<button class="upg-btn ${canUp ? '' : 'disabled'}" onclick="upgradeB('${key}')">${cost}⚙ Upgrade</button>`}
+      </div>
+    </div>`;
+  }).join('');
+}
+window.upgradeB = function(type) { upgradeBuilding(type); uiDirty = true; };
+
+function getUpgradeDesc(type, lv) {
+  const def = BLDG[type];
+  const m = Math.pow(1.3, lv).toFixed(1);
+  if (type === 'reactor') return `${(def.output * Math.pow(1.3, lv - 1) * reactorMult()).toFixed(1)} E/s each`;
+  if (type === 'shieldgen') return `${(def.regen * Math.pow(1.3, lv - 1) * shieldRegenMult()).toFixed(1)} regen/s each`;
+  if (def.damage) return `${(def.damage * Math.pow(1.3, lv - 1) * dmgMult('drone')).toFixed(1)} dmg`;
+  return `×${m}`;
+}
+
+function renderSkillsTab() {
+  let html = `<div class="sp-header">Salvage Points: ${G.totalSP}</div>`;
+  for (const [key, branch] of Object.entries(SKILL_TREE)) {
+    html += `<div class="skill-branch">
+      <div class="skill-branch-name" style="color:${branch.color}">${branch.name}</div>`;
+    for (const node of branch.nodes) {
+      const rank = skill(node.id);
+      const maxed = rank >= node.maxRank;
+      const canBuy = !maxed && G.totalSP >= node.cost;
+      const cls = maxed ? 'maxed' : (!canBuy ? 'locked' : '');
+      const pips = Array.from({ length: node.maxRank }, (_, i) =>
+        `<div class="pip ${i < rank ? 'filled' : ''}" style="color:${branch.color}"></div>`
+      ).join('');
+      html += `<div class="skill-node ${cls}" onclick="${canBuy ? `buySkill('${node.id}')` : ''}" style="${node.capstone ? 'border-left:2px solid ' + branch.color : ''}">
+        <div class="skill-info">
+          <div class="skill-name">${node.name}</div>
+          <div class="skill-desc">${node.desc}</div>
+        </div>
+        <div class="skill-pips">${pips}</div>
+        ${maxed ? '' : `<div class="skill-cost" style="color:var(--cyan)">${node.cost}SP</div>`}
+      </div>`;
+    }
+    html += '</div>';
+  }
+  return html;
+}
+window.buySkill = function(id) { purchaseSkill(id); };
+
+function renderStatsTab() {
+  const dur = Math.floor((Date.now() - G.runStats.startTime) / 1000);
+  const mins = Math.floor(dur / 60), secs = dur % 60;
+  return `
+    <div class="stats-section">
+      <div class="stats-title">CURRENT RUN</div>
+      <div class="stat-row"><span>Wave</span><span class="stat-val">${G.wave}</span></div>
+      <div class="stat-row"><span>Enemies Killed</span><span class="stat-val">${G.runStats.enemiesKilled}</span></div>
+      <div class="stat-row"><span>Scrap Earned</span><span class="stat-val">${G.runStats.scrapEarned}</span></div>
+      <div class="stat-row"><span>Buildings</span><span class="stat-val">${G.buildings.length}</span></div>
+      <div class="stat-row"><span>Duration</span><span class="stat-val">${mins}m ${secs}s</span></div>
+    </div>
+    <div class="stats-section">
+      <div class="stats-title">LIFETIME</div>
+      <div class="stat-row"><span>Runs</span><span class="stat-val">${G.lifeStats.runs}</span></div>
+      <div class="stat-row"><span>Highest Wave</span><span class="stat-val">${G.lifeStats.highWave}</span></div>
+      <div class="stat-row"><span>Total Kills</span><span class="stat-val">${G.lifeStats.totalKills}</span></div>
+      <div class="stat-row"><span>Total Scrap</span><span class="stat-val">${fmtNum(G.lifeStats.totalScrap)}</span></div>
+      <div class="stat-row"><span>Total SP Earned</span><span class="stat-val">${G.lifeStats.totalSP}</span></div>
+    </div>`;
+}
+
+// ─── GAME LOOP ─────────────────────────────────────────
+let lastTime = 0;
+let saveTimer = 0;
+
+function gameLoop(ts) {
+  if (G.gameOver) return;
+  const dt = Math.min((ts - lastTime) / 1000, 0.1);
+  lastTime = ts;
+
+  tickResources(dt);
+  tickWave(dt);
+  tickCombat(dt);
+  updateEnemies(dt);
+  updateEffects(dt);
+
+  render();
+  updateUI();
+
+  // Tab re-render on dirty or timer
+  uiUpdateTimer -= dt;
+  if (uiDirty || uiUpdateTimer <= 0) {
+    renderTab();
+    uiDirty = false;
+    uiUpdateTimer = 0.5;
+  }
+
+  // Auto-save
+  saveTimer += dt;
+  if (saveTimer >= 10) { saveTimer = 0; save(); }
+
+  requestAnimationFrame(gameLoop);
+}
+
+// ─── RESIZE ────────────────────────────────────────────
+function resize() {
+  // Canvas resolution matches CSS size
+  const wrap = document.querySelector('.canvas-wrap');
+  const rect = wrap.getBoundingClientRect();
+  // Keep fixed internal resolution, CSS scales
+}
+
+// ─── INIT ──────────────────────────────────────────────
+function init() {
+  initPlanet();
+  const loaded = load();
+  if (loaded) {
+    recalcMaxShield();
+  }
+  if (G.gameOver || G.shield <= 0) {
+    // Died last session — start fresh run, keep prestige
+    const sp = G.totalSP;
+    const skills = { ...G.skills };
+    const lifeStats = { ...G.lifeStats };
+    G = freshState();
+    window._G = G;
+    G.totalSP = sp;
+    G.skills = skills;
+    G.lifeStats = lifeStats;
+    G.energy = startingEnergy();
+    recalcMaxShield();
+  }
+  G.lastStandAvailable = skill('hull_cap') >= 1;
+  renderTab();
+  lastTime = performance.now();
+  requestAnimationFrame(gameLoop);
+}
+
+init();
+
+})();
+</script>
+</body>
+</html>
