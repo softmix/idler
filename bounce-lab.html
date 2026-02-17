@@ -790,13 +790,15 @@ function updatePhysics(dt) {
     // Wall collisions
     if (b.x - b.r < 0) {
       b.x = b.r;
-      b.vx = Math.abs(b.vx) * elast * (bumperLevel > 0 ? bumperLevel : 1);
+      b.vx = Math.abs(b.vx) * elast;
+      if (bumperLevel > 0) b.vx += bumperLevel * 1.5;
       b.vy *= fric;
       bonk(b, Infinity, bumperLevel > 0 ? bumperLevel : 1);
     }
     if (b.x + b.r > cw) {
       b.x = cw - b.r;
-      b.vx = -Math.abs(b.vx) * elast * (bumperLevel > 0 ? bumperLevel : 1);
+      b.vx = -Math.abs(b.vx) * elast;
+      if (bumperLevel > 0) b.vx -= bumperLevel * 1.5;
       b.vy *= fric;
       bonk(b, Infinity, bumperLevel > 0 ? bumperLevel : 1);
     }
@@ -851,17 +853,27 @@ function updatePhysics(dt) {
       const ddx = b.x - closest.x;
       const ddy = b.y - closest.y;
       const dd = Math.sqrt(ddx * ddx + ddy * ddy);
-      if (dd < b.r + 4) {
+      const spinnerThick = b.r + 8;
+      if (dd < spinnerThick) {
         const nx = dd > 0 ? ddx / dd : 0;
         const ny = dd > 0 ? ddy / dd : 1;
-        b.x = closest.x + nx * (b.r + 5);
-        b.y = closest.y + ny * (b.r + 5);
-        // Impart spinner velocity
-        const spinSpeed = len * (1 + spinnerLevel * 0.8);
-        b.vx += -sin * spinSpeed * 0.05;
-        b.vy += cos * spinSpeed * 0.05;
+        b.x = closest.x + nx * (spinnerThick + 1);
+        b.y = closest.y + ny * (spinnerThick + 1);
+        // Impart spinner velocity (additive kick, not proportional to bar length)
+        const kick = 2 + spinnerLevel * 1.5;
+        b.vx += -sin * kick;
+        b.vy += cos * kick;
         bonk(b, Infinity, 2);
       }
+    }
+
+    // Velocity cap — prevent tunneling and visual chaos
+    const MAX_SPEED = 18;
+    const speed = Math.sqrt(b.vx * b.vx + b.vy * b.vy);
+    if (speed > MAX_SPEED) {
+      const scale = MAX_SPEED / speed;
+      b.vx *= scale;
+      b.vy *= scale;
     }
   }
 
@@ -1430,27 +1442,15 @@ function gameLoop(timestamp) {
 
   // UI updates (throttled)
   uiTimer += dt;
-  if (uiTimer >= 0.25) {
+  if (uiTimer >= 0.5) {
     uiTimer = 0;
     document.getElementById('rp-count').textContent = formatNum(S.rp);
     updateLog();
     checkMilestones();
-    // Update stats if visible
-    if (document.querySelector('.tab[data-tab="stats"]').classList.contains('active')) renderStats();
-    // Update prestige if visible
-    if (document.querySelector('.tab[data-tab="prestige"]').classList.contains('active')) renderPrestige();
-    // Update upgrade costs
-    document.querySelectorAll('.upgrade').forEach(el => {
-      const id = el.dataset.id;
-      const lvl = getLevel(id);
-      const maxed = lvl >= UPGRADES[id].maxLevel;
-      const cost = getNextCost(id);
-      const canAfford = S.rp >= cost;
-      const costEl = el.querySelector('.upgrade-cost');
-      if (costEl && !maxed) {
-        costEl.classList.toggle('cant-afford', !canAfford);
-      }
-    });
+    const activeTab = document.querySelector('.tab.active').dataset.tab;
+    if (activeTab === 'upgrades') renderUpgrades();
+    if (activeTab === 'stats') renderStats();
+    if (activeTab === 'prestige') renderPrestige();
   }
 
   // Auto-save
@@ -1469,6 +1469,13 @@ resize();
 window.addEventListener('resize', resize);
 window.addEventListener('beforeunload', saveGame);
 renderUpgrades();
+
+// Seed initial balls so the chamber isn't empty on load
+const seedCount = Math.min(5, getValue('subjectCount'));
+for (let i = 0; i < seedCount; i++) spawnBall('normal');
+if (getLevel('heavyBall') > 0) spawnBall('heavy');
+if (getLevel('splitterBall') > 0) spawnBall('splitter');
+if (getLevel('magnetBall') > 0) spawnBall('magnet');
 
 requestAnimationFrame(gameLoop);
 </script>
