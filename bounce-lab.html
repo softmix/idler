@@ -384,7 +384,7 @@ body {
     <h1>BOUNCE LAB</h1>
     <div class="rp-display"><span id="rp-count">0</span> RP</div>
   </div>
-  <div class="version" id="version-btn">v0.8</div>
+  <div class="version" id="version-btn">v0.9</div>
 </div>
 
 <div class="main">
@@ -928,7 +928,7 @@ function updatePhysics(dt) {
       const ddx = b.x - closest.x;
       const ddy = b.y - closest.y;
       const dd = Math.sqrt(ddx * ddx + ddy * ddy);
-      const spinnerThick = b.r + 8;
+      const spinnerThick = b.r + 12;
       if (dd < spinnerThick) {
         const nx = dd > 0 ? ddx / dd : 0;
         const ny = dd > 0 ? ddy / dd : 1;
@@ -974,8 +974,8 @@ function updatePhysics(dt) {
         }
         // Strong upward kick when flipper is swinging
         if (f.timer > 0.15) {
-          b.vy -= 10;
-          b.vx += (f.restAngle < Math.PI / 2 ? 3 : -3); // kick inward
+          b.vy = -(14 + grav * 4); // scales with gravity so it always reaches high
+          b.vx += (f.restAngle < Math.PI / 2 ? 5 : -5); // kick inward
         }
         bonk(b, Infinity, 2);
       }
@@ -991,7 +991,7 @@ function updatePhysics(dt) {
     }
 
     // Velocity cap — prevent tunneling and visual chaos
-    const MAX_SPEED = 18;
+    const MAX_SPEED = 25;
     const speed = Math.sqrt(b.vx * b.vx + b.vy * b.vy);
     if (speed > MAX_SPEED) {
       const scale = MAX_SPEED / speed;
