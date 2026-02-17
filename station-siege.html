@@ -1387,12 +1387,15 @@ function updateUI() {
 let lastTabHTML = '';
 function renderTab() {
   const el = document.getElementById('tab-content');
-  let html;
+  let html = '';
+  if (G.gameOver) {
+    html += '<div style="text-align:center;padding:0.4rem;margin-bottom:0.4rem;background:var(--surface2);border:1px solid #2e2e50;border-radius:4px"><span style="font-size:0.6rem;color:var(--muted)">Station destroyed</span> <button class="go-btn primary" style="margin-left:0.5rem;padding:0.2rem 0.6rem;font-size:0.6rem" onclick="startNewRun()">New Run</button></div>';
+  }
   switch (currentTab) {
-    case 'build': html = renderBuildTab(); break;
-    case 'upgrade': html = renderUpgradeTab(); break;
-    case 'skills': html = renderSkillsTab(); break;
-    case 'stats': html = renderStatsTab(); break;
+    case 'build': html += renderBuildTab(); break;
+    case 'upgrade': html += renderUpgradeTab(); break;
+    case 'skills': html += renderSkillsTab(); break;
+    case 'stats': html += renderStatsTab(); break;
   }
   if (html !== lastTabHTML) {
     el.innerHTML = html;
