@@ -384,7 +384,7 @@ body {
     <h1>BOUNCE LAB</h1>
     <div class="rp-display"><span id="rp-count">0</span> RP</div>
   </div>
-  <div class="version" id="version-btn">v0.6</div>
+  <div class="version" id="version-btn">v0.7</div>
 </div>
 
 <div class="main">
@@ -692,21 +692,48 @@ class Ball {
   }
 }
 
-function generatePegs() {
+let rails = [];
+
+function generateObstacles() {
   pegs = [];
+  rails = [];
+
+  // ── Guide rails (always present) ──
+  // Bottom funnel — two angled rails directing balls toward center drain
+  const funnelY = ch * 0.88;
+  const funnelBottom = ch * 0.97;
+  rails.push({ x1: cw * 0.02, y1: funnelY, x2: cw * 0.30, y2: funnelBottom });
+  rails.push({ x1: cw * 0.98, y1: funnelY, x2: cw * 0.70, y2: funnelBottom });
+
+  // Side deflectors — kick balls inward from the walls
+  rails.push({ x1: cw * 0.02, y1: ch * 0.35, x2: cw * 0.10, y2: ch * 0.45 });
+  rails.push({ x1: cw * 0.98, y1: ch * 0.35, x2: cw * 0.90, y2: ch * 0.45 });
+
+  // ── Pegs ──
   const rows = getValue('pegArray');
   if (rows <= 0) return;
-  const startY = ch * 0.2;
-  const endY = ch * 0.8;
+  const startY = ch * 0.15;
+  const endY = ch * 0.80;
   const rowSpacing = (endY - startY) / (rows + 1);
   for (let row = 0; row < rows; row++) {
     const y = startY + rowSpacing * (row + 1);
-    const cols = row % 2 === 0 ? 5 : 4;
-    const offset = row % 2 === 0 ? 0 : (cw / 5) / 2;
+    const cols = row % 2 === 0 ? 6 : 5;
     for (let col = 0; col < cols; col++) {
-      const x = (cw / (cols + 1)) * (col + 1) + (row % 2 === 0 ? 0 : offset * 0.5);
+      const spacing = cw / (cols + 1);
+      const x = spacing * (col + 1);
       pegs.push({ x, y, r: PEG_RADIUS });
     }
+  }
+
+  // Extra rails with more peg rows — side kickers and mid-field deflectors
+  if (rows >= 2) {
+    rails.push({ x1: cw * 0.02, y1: ch * 0.60, x2: cw * 0.12, y2: ch * 0.68 });
+    rails.push({ x1: cw * 0.98, y1: ch * 0.60, x2: cw * 0.88, y2: ch * 0.68 });
+  }
+  if (rows >= 4) {
+    // Mid-field V-deflectors
+    rails.push({ x1: cw * 0.35, y1: ch * 0.52, x2: cw * 0.45, y2: ch * 0.58 });
+    rails.push({ x1: cw * 0.65, y1: ch * 0.52, x2: cw * 0.55, y2: ch * 0.58 });
   }
 }
 
@@ -807,21 +834,14 @@ function updatePhysics(dt) {
       b.vy *= fric;
       bonk(b, Infinity, bumperLevel > 0 ? bumperLevel : 1);
     }
-    if (b.y + b.r > ch) {
-      b.y = ch - b.r;
-      b.vy = -Math.abs(b.vy) * elast;
-      b.vx *= fric;
-      bonk(b, Infinity, 1);
-
-      // Recycle low-energy balls — don't let them linger on the floor
-      if (Math.abs(b.vy) < 2 && Math.abs(b.vx) < 2) {
-        b.x = Math.random() * (cw - 40) + 20;
-        b.y = -b.r;
-        b.vx = (Math.random() - 0.5) * 2;
-        b.vy = 0;
-        b.bounceCount = 0;
-        b.trail = [];
-      }
+    // Drain — balls that exit the bottom respawn at top
+    if (b.y - b.r > ch) {
+      b.x = Math.random() * (cw - 40) + 20;
+      b.y = -b.r;
+      b.vx = (Math.random() - 0.5) * 2;
+      b.vy = 0;
+      b.bounceCount = 0;
+      b.trail = [];
     }
 
     // Peg collisions
@@ -839,6 +859,27 @@ function updatePhysics(dt) {
         b.vx = (b.vx - 2 * dot * nx) * elast;
         b.vy = (b.vy - 2 * dot * ny) * elast;
         bonk(b, Infinity, 1.5);
+      }
+    }
+
+    // Rail collisions
+    for (const rail of rails) {
+      const closest = closestPointOnSegment(b.x, b.y, rail.x1, rail.y1, rail.x2, rail.y2);
+      const rdx = b.x - closest.x;
+      const rdy = b.y - closest.y;
+      const rd = Math.sqrt(rdx * rdx + rdy * rdy);
+      const railThick = b.r + 4;
+      if (rd < railThick) {
+        const nx = rd > 0 ? rdx / rd : 0;
+        const ny = rd > 0 ? rdy / rd : -1;
+        b.x = closest.x + nx * (railThick + 1);
+        b.y = closest.y + ny * (railThick + 1);
+        const dot = b.vx * nx + b.vy * ny;
+        if (dot < 0) {
+          b.vx -= 2 * dot * nx * elast;
+          b.vy -= 2 * dot * ny * elast;
+        }
+        bonk(b, Infinity, 1.2);
       }
     }
 
@@ -1107,6 +1148,45 @@ function drawBalls() {
   }
 }
 
+function drawRails() {
+  CTX.strokeStyle = '#6272a4';
+  CTX.lineWidth = 6;
+  CTX.lineCap = 'round';
+  for (const rail of rails) {
+    CTX.beginPath();
+    CTX.moveTo(rail.x1, rail.y1);
+    CTX.lineTo(rail.x2, rail.y2);
+    CTX.stroke();
+  }
+  // Accent glow
+  CTX.strokeStyle = 'rgba(98,114,164,0.3)';
+  CTX.lineWidth = 12;
+  for (const rail of rails) {
+    CTX.beginPath();
+    CTX.moveTo(rail.x1, rail.y1);
+    CTX.lineTo(rail.x2, rail.y2);
+    CTX.stroke();
+  }
+}
+
+function drawDrain() {
+  // Drain gradient at bottom
+  const grad = CTX.createLinearGradient(0, ch * 0.92, 0, ch);
+  grad.addColorStop(0, 'rgba(0,0,0,0)');
+  grad.addColorStop(1, 'rgba(80,250,123,0.08)');
+  CTX.fillStyle = grad;
+  CTX.fillRect(0, ch * 0.92, cw, ch * 0.08);
+  // Drain opening indicator
+  CTX.strokeStyle = 'rgba(80,250,123,0.15)';
+  CTX.lineWidth = 1;
+  CTX.setLineDash([4, 4]);
+  CTX.beginPath();
+  CTX.moveTo(cw * 0.30, ch);
+  CTX.lineTo(cw * 0.70, ch);
+  CTX.stroke();
+  CTX.setLineDash([]);
+}
+
 function drawParticles() {
   for (const p of particles) {
     CTX.beginPath();
@@ -1121,7 +1201,9 @@ function render() {
   CTX.fillStyle = '#0a0a16';
   CTX.fillRect(0, 0, cw, ch);
   drawGrid();
+  drawDrain();
   drawBumpers();
+  drawRails();
   drawPegs();
   drawSpinner();
   drawParticles();
@@ -1205,7 +1287,7 @@ function buyUpgrade(id) {
   S.upgrades[id] = lvl + 1;
 
   // Side effects
-  if (id === 'pegArray') generatePegs();
+  if (id === 'pegArray') generateObstacles();
 
   renderUpgrades();
   checkMilestones();
@@ -1451,7 +1533,7 @@ function resize() {
   ch = wrap.clientHeight - 10;
   CANVAS.width = cw;
   CANVAS.height = ch;
-  generatePegs();
+  generateObstacles();
 }
 
 // ─── Game Loop ─────────────────────────────────────────────────
