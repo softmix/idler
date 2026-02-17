@@ -73,7 +73,7 @@ main {
   background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.06) 2px, rgba(0,0,0,0.06) 4px);
   pointer-events: none;
 }
-canvas { display: block; width: 100%; height: 100%; }
+canvas { display: block; width: 100%; height: 100%; object-fit: contain; object-position: top left; }
 .panel {
   position: absolute;
   top: 0;
@@ -334,7 +334,7 @@ canvas { display: block; width: 100%; height: 100%; }
   </main>
 </div>
 <div id="overlay" class="hidden"></div>
-<div class="version">v0.5</div>
+<div class="version">v0.6</div>
 
 <script>
 (() => {
