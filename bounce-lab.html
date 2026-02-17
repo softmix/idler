@@ -732,16 +732,21 @@ function spawnParticles(x, y, color, count) {
 }
 
 function bonk(ball, otherMass, energyScale) {
+  const speed = Math.sqrt(ball.vx * ball.vx + ball.vy * ball.vy);
+
+  // Ignore micro-bounces — need real velocity for RP
+  if (speed < 2) return;
+
   ball.bounceCount++;
-  const rp = rpPerBonk(ball) * (energyScale || 1);
+  // RP scales with collision speed: slow taps earn little, fast impacts earn full
+  const speedMult = Math.min(speed / 8, 1);
+  const rp = rpPerBonk(ball) * (energyScale || 1) * speedMult;
   S.rp += rp;
   S.totalRp += rp;
   S.totalBonks++;
-  spawnParticles(ball.x, ball.y, ball.color, 4);
+  spawnParticles(ball.x, ball.y, ball.color, Math.ceil(speedMult * 4));
 
-  // Check speed record
-  const speed = Math.sqrt(ball.vx * ball.vx + ball.vy * ball.vy);
-  const mach = speed / 100; // arbitrary "Mach" scaling
+  const mach = speed / 100;
   if (mach > S.fastestBall) S.fastestBall = mach;
 }
 
@@ -808,8 +813,8 @@ function updatePhysics(dt) {
       b.vx *= fric;
       bonk(b, Infinity, 1);
 
-      // Recycle dead balls
-      if (Math.abs(b.vy) < 0.5 && Math.abs(b.vx) < 0.5) {
+      // Recycle low-energy balls — don't let them linger on the floor
+      if (Math.abs(b.vy) < 2 && Math.abs(b.vx) < 2) {
         b.x = Math.random() * (cw - 40) + 20;
         b.y = -b.r;
         b.vx = (Math.random() - 0.5) * 2;
