@@ -1,0 +1,1476 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bounce Lab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Michroma&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #07070e;
+  --surface: #0d0d1a;
+  --surface-2: #161630;
+  --accent: #50fa7b;
+  --accent-dim: rgba(80,250,123,0.15);
+  --accent-glow: rgba(80,250,123,0.3);
+  --text: #c0c0d4;
+  --text-muted: #3e3e5c;
+  --text-bright: #e0e0f0;
+  --danger: #ff5555;
+}
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'DM Mono', monospace;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Header */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.8rem 1.2rem;
+  border-bottom: 1px solid var(--surface-2);
+  background: var(--surface);
+}
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 1.2rem;
+}
+.header h1 {
+  font-family: 'Michroma', sans-serif;
+  font-size: 0.85rem;
+  letter-spacing: 0.3em;
+  color: var(--accent);
+  text-shadow: 0 0 30px var(--accent-glow);
+}
+.header .rp-display {
+  font-size: 0.8rem;
+  color: var(--text-bright);
+}
+.header .rp-display span {
+  color: var(--accent);
+  font-weight: 500;
+}
+.version {
+  font-size: 0.55rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 0.3rem 0.5rem;
+  border-radius: 3px;
+  transition: background 0.15s;
+}
+.version:hover { background: var(--surface-2); }
+
+/* Main layout */
+.main {
+  display: flex;
+  height: calc(100vh - 3rem - 2.2rem);
+}
+.chamber-wrap {
+  flex: 1;
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  padding: 0.5rem;
+  min-width: 0;
+}
+#chamber {
+  width: 100%;
+  height: 100%;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.panel {
+  width: 320px;
+  min-width: 280px;
+  border-left: 1px solid var(--surface-2);
+  background: var(--surface);
+  overflow-y: auto;
+  padding: 0.8rem;
+}
+
+/* Tabs */
+.tabs {
+  display: flex;
+  gap: 2px;
+  margin-bottom: 0.8rem;
+}
+.tab {
+  flex: 1;
+  padding: 0.4rem;
+  font-family: 'DM Mono', monospace;
+  font-size: 0.6rem;
+  text-align: center;
+  background: var(--surface-2);
+  color: var(--text-muted);
+  border: none;
+  cursor: pointer;
+  border-radius: 3px;
+  transition: all 0.15s;
+}
+.tab.active {
+  background: var(--accent-dim);
+  color: var(--accent);
+}
+.tab:hover:not(.active) { color: var(--text); }
+
+/* Upgrade sections */
+.section-title {
+  font-family: 'Michroma', sans-serif;
+  font-size: 0.55rem;
+  letter-spacing: 0.2em;
+  color: var(--accent);
+  margin: 1rem 0 0.5rem;
+  padding-bottom: 0.3rem;
+  border-bottom: 1px solid var(--surface-2);
+}
+.section-title:first-child { margin-top: 0; }
+.upgrade {
+  background: var(--bg);
+  border: 1px solid var(--surface-2);
+  border-radius: 4px;
+  padding: 0.6rem 0.7rem;
+  margin-bottom: 0.4rem;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.upgrade:hover:not(.locked):not(.maxed) {
+  border-color: var(--accent);
+  box-shadow: 0 0 12px rgba(80,250,123,0.06);
+}
+.upgrade.locked {
+  opacity: 0.3;
+  cursor: default;
+}
+.upgrade.maxed {
+  opacity: 0.5;
+  cursor: default;
+  border-color: var(--accent-dim);
+}
+.upgrade-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.2rem;
+}
+.upgrade-name {
+  font-size: 0.7rem;
+  color: var(--text-bright);
+  font-weight: 500;
+}
+.upgrade-cost {
+  font-size: 0.6rem;
+  color: var(--accent);
+}
+.upgrade-cost.cant-afford { color: var(--text-muted); }
+.upgrade-desc {
+  font-size: 0.55rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+.upgrade-level {
+  font-size: 0.55rem;
+  color: var(--text-muted);
+  margin-top: 0.2rem;
+}
+
+/* Stats tab */
+.stat-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.3rem 0;
+  font-size: 0.65rem;
+  border-bottom: 1px solid var(--surface-2);
+}
+.stat-label { color: var(--text-muted); }
+.stat-value { color: var(--text-bright); }
+
+/* Prestige tab */
+.prestige-box {
+  background: var(--bg);
+  border: 1px solid var(--accent-dim);
+  border-radius: 4px;
+  padding: 1rem;
+  text-align: center;
+  margin-top: 0.5rem;
+}
+.prestige-box h3 {
+  font-family: 'Michroma', sans-serif;
+  font-size: 0.65rem;
+  color: var(--accent);
+  margin-bottom: 0.5rem;
+  letter-spacing: 0.15em;
+}
+.prestige-box p {
+  font-size: 0.6rem;
+  color: var(--text-muted);
+  line-height: 1.6;
+  margin-bottom: 0.6rem;
+}
+.prestige-citations {
+  font-size: 0.8rem;
+  color: var(--text-bright);
+  margin-bottom: 0.3rem;
+}
+.prestige-mult {
+  font-size: 0.6rem;
+  color: var(--accent);
+  margin-bottom: 0.8rem;
+}
+.prestige-btn {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.65rem;
+  padding: 0.5rem 1.2rem;
+  background: var(--accent-dim);
+  color: var(--accent);
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.prestige-btn:hover { background: var(--accent); color: var(--bg); }
+.prestige-btn:disabled { opacity: 0.3; cursor: default; }
+.prestige-btn:disabled:hover { background: var(--accent-dim); color: var(--accent); }
+.paper-title {
+  font-size: 0.55rem;
+  color: var(--text-muted);
+  margin-top: 0.8rem;
+  font-style: italic;
+  line-height: 1.5;
+}
+
+/* Research log */
+.log-bar {
+  height: 2.2rem;
+  border-top: 1px solid var(--surface-2);
+  background: var(--surface);
+  display: flex;
+  align-items: center;
+  padding: 0 1.2rem;
+  overflow: hidden;
+}
+.log-text {
+  font-size: 0.6rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  animation: logScroll 20s linear infinite;
+}
+@keyframes logScroll {
+  0% { transform: translateX(100vw); }
+  100% { transform: translateX(-100%); }
+}
+
+/* Save indicator */
+.save-indicator {
+  position: fixed;
+  bottom: 3rem;
+  left: 0.8rem;
+  font-size: 0.5rem;
+  color: var(--text-muted);
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+.save-indicator.show { opacity: 1; }
+
+/* Toast */
+.toast {
+  position: fixed;
+  top: 4rem;
+  left: 50%;
+  transform: translateX(-50%) translateY(-10px);
+  background: var(--surface);
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  padding: 0.6rem 1rem;
+  font-size: 0.6rem;
+  color: var(--text-bright);
+  opacity: 0;
+  transition: all 0.3s;
+  pointer-events: none;
+  max-width: 500px;
+  text-align: center;
+  z-index: 100;
+  box-shadow: 0 0 20px var(--accent-glow);
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* Reset modal */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.7);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+}
+.modal-overlay.show { display: flex; }
+.modal {
+  background: var(--surface);
+  border: 1px solid var(--danger);
+  border-radius: 6px;
+  padding: 1.5rem;
+  max-width: 340px;
+  text-align: center;
+}
+.modal h3 {
+  font-family: 'Michroma', sans-serif;
+  font-size: 0.7rem;
+  color: var(--danger);
+  margin-bottom: 0.6rem;
+}
+.modal p {
+  font-size: 0.6rem;
+  color: var(--text-muted);
+  margin-bottom: 1rem;
+  line-height: 1.5;
+}
+.modal-buttons {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
+}
+.modal-buttons button {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.6rem;
+  padding: 0.4rem 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+  border: 1px solid;
+  transition: all 0.15s;
+}
+.btn-cancel {
+  background: var(--surface-2);
+  color: var(--text);
+  border-color: var(--surface-2);
+}
+.btn-danger {
+  background: transparent;
+  color: var(--danger);
+  border-color: var(--danger);
+}
+.btn-danger:hover { background: var(--danger); color: var(--bg); }
+
+/* Mobile */
+@media (max-width: 768px) {
+  .main {
+    flex-direction: column;
+    height: auto;
+  }
+  .chamber-wrap {
+    height: 50vh;
+    min-height: 300px;
+  }
+  .panel {
+    width: 100%;
+    min-width: unset;
+    border-left: none;
+    border-top: 1px solid var(--surface-2);
+    max-height: 50vh;
+  }
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <h1>BOUNCE LAB</h1>
+    <div class="rp-display"><span id="rp-count">0</span> RP</div>
+  </div>
+  <div class="version" id="version-btn">v0.1</div>
+</div>
+
+<div class="main">
+  <div class="chamber-wrap">
+    <canvas id="chamber"></canvas>
+  </div>
+  <div class="panel">
+    <div class="tabs">
+      <button class="tab active" data-tab="upgrades">Upgrades</button>
+      <button class="tab" data-tab="stats">Stats</button>
+      <button class="tab" data-tab="prestige">Publish</button>
+    </div>
+    <div id="tab-upgrades"></div>
+    <div id="tab-stats" style="display:none"></div>
+    <div id="tab-prestige" style="display:none"></div>
+  </div>
+</div>
+
+<div class="log-bar">
+  <div class="log-text" id="log-text">Research Log: Initializing bounce chamber...</div>
+</div>
+
+<div class="save-indicator" id="save-indicator">saved</div>
+
+<div class="toast" id="toast"></div>
+
+<div class="modal-overlay" id="reset-modal">
+  <div class="modal">
+    <h3>RESET ALL DATA</h3>
+    <p>This will permanently erase all research progress, upgrades, and citations. This cannot be undone.</p>
+    <div class="modal-buttons">
+      <button class="btn-cancel" id="reset-cancel">Cancel</button>
+      <button class="btn-danger" id="reset-confirm">Reset</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const SAVE_KEY = 'bouncelab_v1';
+const CANVAS = document.getElementById('chamber');
+const CTX = CANVAS.getContext('2d');
+
+// ─── Game State ────────────────────────────────────────────────
+function defaultState() {
+  return {
+    rp: 0,
+    totalRp: 0,
+    totalBonks: 0,
+    peakAirborne: 0,
+    fastestBall: 0,
+    citations: 0,
+    papersPublished: 0,
+    upgrades: {},
+    lastSave: Date.now(),
+    logIndex: 0,
+  };
+}
+
+let S = defaultState();
+
+// ─── Upgrades Definition ───────────────────────────────────────
+const UPGRADES = {
+  // Ball Research
+  subjectCount: {
+    name: 'Subject Count',
+    section: 'BALL RESEARCH',
+    desc: i => {
+      const descs = [
+        'Proposal #1: Increase active subjects from 5 to 10. Hypothesis: More balls = more science.',
+        'Proposal #12: 20 subjects requested. Ethics board concerned about "ball welfare."',
+        'Proposal #23: 50 subjects. Lab capacity assessment: "It\'ll be fine."',
+        'Proposal #37: 100 balls. We have stopped asking permission.',
+        'Proposal #48: 200 subjects. The chamber can barely contain our ambition.',
+      ];
+      return descs[Math.min(i, descs.length - 1)] || 'Maximum subject count reached.';
+    },
+    levels: [5, 10, 20, 50, 100, 200],
+    costs: [0, 25, 150, 800, 5000, 40000],
+    maxLevel: 5,
+  },
+  dropFreq: {
+    name: 'Drop Frequency',
+    section: 'BALL RESEARCH',
+    desc: i => {
+      const descs = [
+        'Increase dropper cadence. Current rate deemed "disappointingly slow" by reviewers.',
+        'Dual-feed drop mechanism. Twice the balls, twice the data.',
+        'High-throughput ball deployment. The chamber floor rarely visible now.',
+        'Rapid-fire dropper. Health & Safety has filed a complaint.',
+        'Continuous stream. We can no longer see the bottom.',
+      ];
+      return descs[Math.min(i, descs.length - 1)];
+    },
+    levels: [2000, 1500, 1000, 600, 350, 200],
+    costs: [0, 30, 200, 1200, 7000, 50000],
+    maxLevel: 5,
+  },
+  subjectMass: {
+    name: 'Subject Mass',
+    section: 'BALL RESEARCH',
+    desc: i => {
+      const descs = [
+        'Increase ball density. Heavier subjects yield more energetic collisions.',
+        'Lead-core subjects deployed. The floor is denting.',
+        'Depleted uranium fill approved. Do not ask where we sourced it.',
+        'Neutron star material. Gravitational anomalies noted near the break room.',
+        'Theoretical mass limit exceeded. The janitor has concerns.',
+      ];
+      return descs[Math.min(i, descs.length - 1)];
+    },
+    levels: [1, 1.5, 2.5, 4, 7, 12],
+    costs: [0, 40, 250, 1500, 10000, 80000],
+    maxLevel: 5,
+  },
+
+  // Physics Parameters
+  gravity: {
+    name: 'Gravitational Amplification',
+    section: 'PHYSICS PARAMETERS',
+    desc: i => {
+      const descs = [
+        'Increase local gravity field strength. Subjects will accelerate faster.',
+        'Gravity doubled. Coffee cups sliding off desks across the lab.',
+        'Gravity at 4x. Interns advised to wear weighted boots.',
+        'Gravity at 8x. Several ceiling tiles have fallen. Unrelated, we assume.',
+        'Gravity at 16x. Walking upright has become "optional."',
+      ];
+      return descs[Math.min(i, descs.length - 1)];
+    },
+    levels: [0.4, 0.6, 0.9, 1.4, 2.0, 3.0],
+    costs: [0, 50, 300, 2000, 12000, 90000],
+    maxLevel: 5,
+  },
+  elasticity: {
+    name: 'Elasticity Enhancement',
+    section: 'PHYSICS PARAMETERS',
+    desc: i => {
+      const descs = [
+        'Increase coefficient of restitution. Subjects will retain more kinetic energy.',
+        'Bouncing efficiency at 85%. Subjects visibly more enthusiastic.',
+        'Near-perfect elasticity. Energy loss negligible. Perpetual motion "almost" achieved.',
+        'Super-elastic coating applied. Balls occasionally bounce higher than dropped.',
+        'Elasticity exceeds 1.0. We have broken thermodynamics. Nobody tell the physicists.',
+      ];
+      return descs[Math.min(i, descs.length - 1)];
+    },
+    levels: [0.7, 0.8, 0.88, 0.94, 0.98, 1.02],
+    costs: [0, 60, 400, 2500, 15000, 120000],
+    maxLevel: 5,
+  },
+  friction: {
+    name: 'Friction Reduction',
+    section: 'PHYSICS PARAMETERS',
+    desc: i => {
+      const descs = [
+        'Apply low-friction coating to chamber walls. Less energy wasted on surface contact.',
+        'Teflon coating installed. Cleaning crew reports "sliding incidents."',
+        'Near-frictionless surfaces. Balls now difficult to stop intentionally.',
+        'Quantum-smooth walls. Friction measurable only in theory.',
+        'Friction eliminated. The concept of "stopping" is now philosophical.',
+      ];
+      return descs[Math.min(i, descs.length - 1)];
+    },
+    levels: [0.99, 0.995, 0.998, 0.999, 0.9995, 0.9999],
+    costs: [0, 45, 280, 1800, 11000, 85000],
+    maxLevel: 5,
+  },
+
+  // Lab Equipment
+  pegArray: {
+    name: 'Peg Array',
+    section: 'LAB EQUIPMENT',
+    desc: i => {
+      const descs = [
+        'Install first row of deflection pegs. Subjects will bounce more interestingly.',
+        'Second peg row. The chamber now resembles a pachinko machine. This is science.',
+        'Third row. Navigation through the chamber now requires "route planning."',
+        'Fourth row. We have created a labyrinth. The balls don\'t seem to mind.',
+        'Maximum peg density. Balls spend more time bouncing off pegs than falling.',
+      ];
+      return descs[Math.min(i, descs.length - 1)];
+    },
+    levels: [0, 1, 2, 3, 4, 5],
+    costs: [0, 100, 600, 3500, 20000, 150000],
+    maxLevel: 5,
+  },
+  bumpers: {
+    name: 'Bumper Pads',
+    section: 'LAB EQUIPMENT',
+    desc: i => {
+      const descs = [
+        'Install powered bumpers on chamber walls. Subjects receive velocity boost on wall contact.',
+        'Bumper force increased. Balls now ricochet with concerning enthusiasm.',
+        'Maximum bumper power. Wall impacts now louder than the fire alarm.',
+      ];
+      return descs[Math.min(i, descs.length - 1)];
+    },
+    levels: [0, 1.3, 1.6, 2.0],
+    costs: [0, 200, 2000, 25000],
+    maxLevel: 3,
+  },
+  spinner: {
+    name: 'The Spinner',
+    section: 'LAB EQUIPMENT',
+    desc: i => {
+      const descs = [
+        'Install rotating bar obstacle. Will fling subjects at high velocity. Safety goggles required.',
+        'Increase spinner speed. Safety goggles upgraded to face shield.',
+        'Maximum spin rate. Subjects achieving previously theoretical velocities.',
+      ];
+      return descs[Math.min(i, descs.length - 1)];
+    },
+    levels: [0, 1, 2, 3],
+    costs: [0, 500, 5000, 50000],
+    maxLevel: 3,
+  },
+
+  // Anomalous Subjects
+  heavyBall: {
+    name: 'Heavy Ball',
+    section: 'ANOMALOUS SUBJECTS',
+    desc: () => 'Deploy one high-mass subject. 3x standard mass. Screen tremor on impact. Significant RP bonus per collision.',
+    levels: [0, 1],
+    costs: [0, 3000],
+    maxLevel: 1,
+  },
+  splitterBall: {
+    name: 'Splitter Ball',
+    section: 'ANOMALOUS SUBJECTS',
+    desc: () => 'Deploy one fission-capable subject. Splits into 3 sub-subjects after 5 bounces. The ethics committee was not consulted.',
+    levels: [0, 1],
+    costs: [0, 8000],
+    maxLevel: 1,
+  },
+  magnetBall: {
+    name: 'Magnet Ball',
+    section: 'ANOMALOUS SUBJECTS',
+    desc: () => 'Deploy one ferromagnetic subject. Attracts nearby balls, increasing local collision density. We attached a magnet to a ball. Grant money well spent.',
+    levels: [0, 1],
+    costs: [0, 15000],
+    maxLevel: 1,
+  },
+
+  // Automation
+  autoDrop: {
+    name: 'Auto-Drop',
+    section: 'AUTOMATION',
+    desc: () => 'Automate the ball dropper mechanism. Subjects will deploy without manual intervention. The interns are relieved.',
+    levels: [0, 1],
+    costs: [0, 500],
+    maxLevel: 1,
+  },
+  researchGrant: {
+    name: 'Research Grant',
+    section: 'AUTOMATION',
+    desc: i => {
+      const descs = [
+        'Secure baseline funding. Generates 1 RP/s passively. Also applies while the lab is closed (offline).',
+        'Increased funding. 5 RP/s. The grant reviewer did not read our proposal.',
+        'Major grant. 25 RP/s. We described our work as "applied kinetic research."',
+        'Government contract. 100 RP/s. They think we\'re doing defense research.',
+      ];
+      return descs[Math.min(i, descs.length - 1)];
+    },
+    levels: [0, 1, 5, 25, 100],
+    costs: [0, 1000, 8000, 60000, 500000],
+    maxLevel: 4,
+  },
+};
+
+function getLevel(id) { return S.upgrades[id] || 0; }
+function getValue(id) { return UPGRADES[id].levels[getLevel(id)]; }
+function getNextCost(id) {
+  const lvl = getLevel(id);
+  if (lvl >= UPGRADES[id].maxLevel) return Infinity;
+  return UPGRADES[id].costs[lvl + 1];
+}
+
+function citationMult() { return 1 + S.citations * 0.25; }
+
+// ─── Physics Objects ───────────────────────────────────────────
+let balls = [];
+let pegs = [];
+let particles = [];
+let spinnerAngle = 0;
+let lastDrop = 0;
+let cw, ch; // canvas width/height
+
+const BALL_RADIUS = 8;
+const PEG_RADIUS = 10;
+const BALL_COLORS = ['#50fa7b','#8be9fd','#ff79c6','#ffb86c','#bd93f9','#f1fa8c','#ff5555','#6272a4'];
+
+class Ball {
+  constructor(x, y, type = 'normal') {
+    this.x = x;
+    this.y = y;
+    this.vx = (Math.random() - 0.5) * 2;
+    this.vy = 0;
+    this.r = BALL_RADIUS;
+    this.type = type;
+    this.bounceCount = 0;
+    this.color = type === 'heavy' ? '#ff5555' : type === 'splitter' ? '#f1fa8c' : type === 'magnet' ? '#bd93f9' : BALL_COLORS[Math.floor(Math.random() * BALL_COLORS.length)];
+    this.mass = getValue('subjectMass') * (type === 'heavy' ? 3 : 1);
+    this.trail = [];
+  }
+}
+
+function generatePegs() {
+  pegs = [];
+  const rows = getValue('pegArray');
+  if (rows <= 0) return;
+  const startY = ch * 0.2;
+  const endY = ch * 0.8;
+  const rowSpacing = (endY - startY) / (rows + 1);
+  for (let row = 0; row < rows; row++) {
+    const y = startY + rowSpacing * (row + 1);
+    const cols = row % 2 === 0 ? 5 : 4;
+    const offset = row % 2 === 0 ? 0 : (cw / 5) / 2;
+    for (let col = 0; col < cols; col++) {
+      const x = (cw / (cols + 1)) * (col + 1) + (row % 2 === 0 ? 0 : offset * 0.5);
+      pegs.push({ x, y, r: PEG_RADIUS });
+    }
+  }
+}
+
+// ─── Physics ───────────────────────────────────────────────────
+function rpPerBonk(ball) {
+  const base = 0.5 + ball.mass * 0.5;
+  return base * citationMult();
+}
+
+function spawnParticles(x, y, color, count) {
+  for (let i = 0; i < count; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const speed = 1 + Math.random() * 3;
+    particles.push({
+      x, y,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed,
+      life: 1,
+      color,
+      r: 1.5 + Math.random() * 2,
+    });
+  }
+}
+
+function bonk(ball, otherMass, energyScale) {
+  ball.bounceCount++;
+  const rp = rpPerBonk(ball) * (energyScale || 1);
+  S.rp += rp;
+  S.totalRp += rp;
+  S.totalBonks++;
+  spawnParticles(ball.x, ball.y, ball.color, 4);
+
+  // Check speed record
+  const speed = Math.sqrt(ball.vx * ball.vx + ball.vy * ball.vy);
+  const mach = speed / 100; // arbitrary "Mach" scaling
+  if (mach > S.fastestBall) S.fastestBall = mach;
+}
+
+function updatePhysics(dt) {
+  const grav = getValue('gravity');
+  const elast = getValue('elasticity');
+  const fric = getValue('friction');
+  const bumperLevel = getValue('bumpers');
+  const spinnerLevel = getValue('spinner');
+  const hasMagnet = getLevel('magnetBall') > 0;
+
+  // Spinner rotation
+  if (spinnerLevel > 0) {
+    spinnerAngle += dt * (1 + spinnerLevel * 0.8);
+  }
+
+  // Magnet ball attraction
+  let magnetBall = hasMagnet ? balls.find(b => b.type === 'magnet') : null;
+
+  for (let i = 0; i < balls.length; i++) {
+    const b = balls[i];
+
+    // Gravity
+    b.vy += grav * dt * 60;
+
+    // Magnet attraction
+    if (magnetBall && b !== magnetBall) {
+      const dx = magnetBall.x - b.x;
+      const dy = magnetBall.y - b.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist < 150 && dist > 0) {
+        const force = 0.3 / (dist * 0.05);
+        b.vx += (dx / dist) * force * dt * 60;
+        b.vy += (dy / dist) * force * dt * 60;
+      }
+    }
+
+    // Move
+    b.x += b.vx * dt * 60;
+    b.y += b.vy * dt * 60;
+
+    // Trail
+    b.trail.push({ x: b.x, y: b.y });
+    if (b.trail.length > 6) b.trail.shift();
+
+    // Wall collisions
+    if (b.x - b.r < 0) {
+      b.x = b.r;
+      b.vx = Math.abs(b.vx) * elast * (bumperLevel > 0 ? bumperLevel : 1);
+      b.vy *= fric;
+      bonk(b, Infinity, bumperLevel > 0 ? bumperLevel : 1);
+    }
+    if (b.x + b.r > cw) {
+      b.x = cw - b.r;
+      b.vx = -Math.abs(b.vx) * elast * (bumperLevel > 0 ? bumperLevel : 1);
+      b.vy *= fric;
+      bonk(b, Infinity, bumperLevel > 0 ? bumperLevel : 1);
+    }
+    if (b.y + b.r > ch) {
+      b.y = ch - b.r;
+      b.vy = -Math.abs(b.vy) * elast;
+      b.vx *= fric;
+      bonk(b, Infinity, 1);
+
+      // Recycle dead balls
+      if (Math.abs(b.vy) < 0.5 && Math.abs(b.vx) < 0.5) {
+        b.x = Math.random() * (cw - 40) + 20;
+        b.y = -b.r;
+        b.vx = (Math.random() - 0.5) * 2;
+        b.vy = 0;
+        b.bounceCount = 0;
+        b.trail = [];
+      }
+    }
+
+    // Peg collisions
+    for (const peg of pegs) {
+      const dx = b.x - peg.x;
+      const dy = b.y - peg.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      const minDist = b.r + peg.r;
+      if (dist < minDist && dist > 0) {
+        const nx = dx / dist;
+        const ny = dy / dist;
+        b.x = peg.x + nx * minDist;
+        b.y = peg.y + ny * minDist;
+        const dot = b.vx * nx + b.vy * ny;
+        b.vx = (b.vx - 2 * dot * nx) * elast;
+        b.vy = (b.vy - 2 * dot * ny) * elast;
+        bonk(b, Infinity, 1.5);
+      }
+    }
+
+    // Spinner collision
+    if (spinnerLevel > 0) {
+      const cx = cw / 2;
+      const cy = ch * 0.5;
+      const len = cw * 0.25;
+      const cos = Math.cos(spinnerAngle);
+      const sin = Math.sin(spinnerAngle);
+      // Check collision with spinner bar (line segment)
+      const sx = cx - cos * len;
+      const sy = cy - sin * len;
+      const ex = cx + cos * len;
+      const ey = cy + sin * len;
+      const closest = closestPointOnSegment(b.x, b.y, sx, sy, ex, ey);
+      const ddx = b.x - closest.x;
+      const ddy = b.y - closest.y;
+      const dd = Math.sqrt(ddx * ddx + ddy * ddy);
+      if (dd < b.r + 4) {
+        const nx = dd > 0 ? ddx / dd : 0;
+        const ny = dd > 0 ? ddy / dd : 1;
+        b.x = closest.x + nx * (b.r + 5);
+        b.y = closest.y + ny * (b.r + 5);
+        // Impart spinner velocity
+        const spinSpeed = len * (1 + spinnerLevel * 0.8);
+        b.vx += -sin * spinSpeed * 0.05;
+        b.vy += cos * spinSpeed * 0.05;
+        bonk(b, Infinity, 2);
+      }
+    }
+  }
+
+  // Ball-ball collisions
+  for (let i = 0; i < balls.length; i++) {
+    for (let j = i + 1; j < balls.length; j++) {
+      const a = balls[i];
+      const b = balls[j];
+      const dx = b.x - a.x;
+      const dy = b.y - a.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      const minDist = a.r + b.r;
+      if (dist < minDist && dist > 0) {
+        const nx = dx / dist;
+        const ny = dy / dist;
+        // Separate
+        const overlap = (minDist - dist) / 2;
+        a.x -= nx * overlap;
+        a.y -= ny * overlap;
+        b.x += nx * overlap;
+        b.y += ny * overlap;
+        // Elastic collision
+        const dvx = a.vx - b.vx;
+        const dvy = a.vy - b.vy;
+        const dvDotN = dvx * nx + dvy * ny;
+        if (dvDotN > 0) {
+          const totalMass = a.mass + b.mass;
+          const impulse = (2 * dvDotN) / totalMass;
+          a.vx -= impulse * b.mass * nx * elast;
+          a.vy -= impulse * b.mass * ny * elast;
+          b.vx += impulse * a.mass * nx * elast;
+          b.vy += impulse * a.mass * ny * elast;
+          bonk(a, b.mass, 1);
+          bonk(b, a.mass, 1);
+        }
+      }
+    }
+  }
+
+  // Splitter check
+  for (let i = balls.length - 1; i >= 0; i--) {
+    const b = balls[i];
+    if (b.type === 'splitter' && b.bounceCount >= 5) {
+      // Replace with 3 small balls
+      balls.splice(i, 1);
+      for (let k = 0; k < 3; k++) {
+        const nb = new Ball(b.x + (Math.random() - 0.5) * 10, b.y, 'normal');
+        nb.r = BALL_RADIUS * 0.7;
+        nb.vx = b.vx + (Math.random() - 0.5) * 4;
+        nb.vy = b.vy + (Math.random() - 0.5) * 4;
+        nb.color = '#f1fa8c';
+        nb.mass = b.mass * 0.4;
+        balls.push(nb);
+      }
+      spawnParticles(b.x, b.y, '#f1fa8c', 12);
+    }
+  }
+
+  // Update particles
+  for (let i = particles.length - 1; i >= 0; i--) {
+    const p = particles[i];
+    p.x += p.vx;
+    p.y += p.vy;
+    p.life -= dt * 3;
+    if (p.life <= 0) particles.splice(i, 1);
+  }
+
+  // Track peak airborne
+  const airborne = balls.filter(b => b.y < ch - b.r - 1).length;
+  if (airborne > S.peakAirborne) S.peakAirborne = airborne;
+}
+
+function closestPointOnSegment(px, py, ax, ay, bx, by) {
+  const dx = bx - ax, dy = by - ay;
+  const len2 = dx * dx + dy * dy;
+  if (len2 === 0) return { x: ax, y: ay };
+  let t = ((px - ax) * dx + (py - ay) * dy) / len2;
+  t = Math.max(0, Math.min(1, t));
+  return { x: ax + t * dx, y: ay + t * dy };
+}
+
+// ─── Spawning ──────────────────────────────────────────────────
+function spawnBall(type = 'normal') {
+  const maxBalls = getValue('subjectCount');
+  if (type !== 'normal') {
+    // Only 1 of each special type, but always allow respawn
+    if (balls.some(b => b.type === type)) return;
+  } else {
+    if (balls.length >= maxBalls + 3) return;
+  }
+  const b = new Ball(Math.random() * (cw - 40) + 20, -BALL_RADIUS, type);
+  balls.push(b);
+}
+
+function tryDrop(now) {
+  const interval = getValue('dropFreq');
+  const autoDrop = getLevel('autoDrop') > 0;
+  if (!autoDrop) return;
+  if (now - lastDrop >= interval) {
+    lastDrop = now;
+    const normalCount = balls.filter(b => b.type === 'normal').length;
+    if (normalCount < getValue('subjectCount')) {
+      spawnBall('normal');
+    }
+    // Respawn special balls if unlocked and missing
+    if (getLevel('heavyBall') > 0 && !balls.some(b => b.type === 'heavy')) spawnBall('heavy');
+    if (getLevel('splitterBall') > 0 && !balls.some(b => b.type === 'splitter')) spawnBall('splitter');
+    if (getLevel('magnetBall') > 0 && !balls.some(b => b.type === 'magnet')) spawnBall('magnet');
+  }
+}
+
+// ─── Rendering ─────────────────────────────────────────────────
+function drawGrid() {
+  CTX.strokeStyle = 'rgba(80,250,123,0.03)';
+  CTX.lineWidth = 1;
+  const step = 40;
+  for (let x = 0; x < cw; x += step) {
+    CTX.beginPath(); CTX.moveTo(x, 0); CTX.lineTo(x, ch); CTX.stroke();
+  }
+  for (let y = 0; y < ch; y += step) {
+    CTX.beginPath(); CTX.moveTo(0, y); CTX.lineTo(cw, y); CTX.stroke();
+  }
+}
+
+function drawPegs() {
+  for (const peg of pegs) {
+    // Metallic look
+    const grad = CTX.createRadialGradient(peg.x - 3, peg.y - 3, 1, peg.x, peg.y, peg.r);
+    grad.addColorStop(0, '#8899aa');
+    grad.addColorStop(1, '#334455');
+    CTX.beginPath();
+    CTX.arc(peg.x, peg.y, peg.r, 0, Math.PI * 2);
+    CTX.fillStyle = grad;
+    CTX.fill();
+    CTX.strokeStyle = '#556677';
+    CTX.lineWidth = 1;
+    CTX.stroke();
+  }
+}
+
+function drawSpinner() {
+  const level = getValue('spinner');
+  if (level <= 0) return;
+  const cx = cw / 2;
+  const cy = ch * 0.5;
+  const len = cw * 0.25;
+  const cos = Math.cos(spinnerAngle);
+  const sin = Math.sin(spinnerAngle);
+  CTX.beginPath();
+  CTX.moveTo(cx - cos * len, cy - sin * len);
+  CTX.lineTo(cx + cos * len, cy + sin * len);
+  CTX.strokeStyle = '#ff79c6';
+  CTX.lineWidth = 6;
+  CTX.lineCap = 'round';
+  CTX.stroke();
+  // Center pivot
+  CTX.beginPath();
+  CTX.arc(cx, cy, 6, 0, Math.PI * 2);
+  CTX.fillStyle = '#ff79c6';
+  CTX.fill();
+}
+
+function drawBumpers() {
+  const level = getValue('bumpers');
+  if (level <= 0) return;
+  const glow = 'rgba(80,250,123,0.15)';
+  CTX.fillStyle = glow;
+  // Left bumper
+  CTX.fillRect(0, ch * 0.2, 4, ch * 0.6);
+  // Right bumper
+  CTX.fillRect(cw - 4, ch * 0.2, 4, ch * 0.6);
+  // Accent lines
+  CTX.strokeStyle = 'rgba(80,250,123,0.4)';
+  CTX.lineWidth = 2;
+  CTX.beginPath(); CTX.moveTo(2, ch * 0.2); CTX.lineTo(2, ch * 0.8); CTX.stroke();
+  CTX.beginPath(); CTX.moveTo(cw - 2, ch * 0.2); CTX.lineTo(cw - 2, ch * 0.8); CTX.stroke();
+}
+
+function drawBalls() {
+  for (const b of balls) {
+    // Trail
+    if (b.trail.length > 1) {
+      const speed = Math.sqrt(b.vx * b.vx + b.vy * b.vy);
+      if (speed > 3) {
+        CTX.beginPath();
+        CTX.moveTo(b.trail[0].x, b.trail[0].y);
+        for (let i = 1; i < b.trail.length; i++) {
+          CTX.lineTo(b.trail[i].x, b.trail[i].y);
+        }
+        CTX.strokeStyle = b.color + '30';
+        CTX.lineWidth = b.r * 1.5;
+        CTX.lineCap = 'round';
+        CTX.stroke();
+      }
+    }
+
+    // Glow
+    CTX.beginPath();
+    CTX.arc(b.x, b.y, b.r + 4, 0, Math.PI * 2);
+    CTX.fillStyle = b.color + '15';
+    CTX.fill();
+
+    // Ball
+    CTX.beginPath();
+    CTX.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+    const grad = CTX.createRadialGradient(b.x - 2, b.y - 2, 1, b.x, b.y, b.r);
+    grad.addColorStop(0, b.color);
+    grad.addColorStop(1, b.color + 'aa');
+    CTX.fillStyle = grad;
+    CTX.fill();
+
+    // Magnet indicator
+    if (b.type === 'magnet') {
+      CTX.beginPath();
+      CTX.arc(b.x, b.y, 20, 0, Math.PI * 2);
+      CTX.strokeStyle = '#bd93f920';
+      CTX.lineWidth = 1;
+      CTX.stroke();
+    }
+  }
+}
+
+function drawParticles() {
+  for (const p of particles) {
+    CTX.beginPath();
+    CTX.arc(p.x, p.y, p.r * p.life, 0, Math.PI * 2);
+    CTX.fillStyle = p.color + Math.floor(p.life * 255).toString(16).padStart(2, '0');
+    CTX.fill();
+  }
+}
+
+function render() {
+  CTX.clearRect(0, 0, cw, ch);
+  CTX.fillStyle = '#0a0a16';
+  CTX.fillRect(0, 0, cw, ch);
+  drawGrid();
+  drawBumpers();
+  drawPegs();
+  drawSpinner();
+  drawParticles();
+  drawBalls();
+}
+
+// ─── UI ────────────────────────────────────────────────────────
+function formatNum(n) {
+  if (n >= 1e9) return (n / 1e9).toFixed(2) + 'B';
+  if (n >= 1e6) return (n / 1e6).toFixed(2) + 'M';
+  if (n >= 1e4) return (n / 1e3).toFixed(1) + 'K';
+  return Math.floor(n).toLocaleString();
+}
+
+function renderUpgrades() {
+  const container = document.getElementById('tab-upgrades');
+  let html = '';
+  let currentSection = '';
+
+  for (const [id, up] of Object.entries(UPGRADES)) {
+    if (up.section !== currentSection) {
+      currentSection = up.section;
+      html += `<div class="section-title">${currentSection}</div>`;
+    }
+
+    const lvl = getLevel(id);
+    const maxed = lvl >= up.maxLevel;
+    const cost = getNextCost(id);
+    const canAfford = S.rp >= cost;
+    const locked = !maxed && !canAfford && cost > S.totalRp * 2 && lvl === 0;
+
+    html += `<div class="upgrade ${maxed ? 'maxed' : ''} ${locked ? 'locked' : ''}" data-id="${id}">
+      <div class="upgrade-header">
+        <div class="upgrade-name">${up.name}</div>
+        <div class="upgrade-cost ${canAfford || maxed ? '' : 'cant-afford'}">${maxed ? 'MAX' : formatNum(cost) + ' RP'}</div>
+      </div>
+      <div class="upgrade-desc">${up.desc(lvl)}</div>
+      <div class="upgrade-level">${maxed ? `Level ${lvl}/${up.maxLevel}` : `Level ${lvl}/${up.maxLevel} → ${lvl + 1}`}</div>
+    </div>`;
+  }
+
+  container.innerHTML = html;
+
+  // Bind click handlers
+  container.querySelectorAll('.upgrade:not(.locked):not(.maxed)').forEach(el => {
+    el.addEventListener('click', () => buyUpgrade(el.dataset.id));
+  });
+}
+
+function buyUpgrade(id) {
+  const up = UPGRADES[id];
+  const lvl = getLevel(id);
+  if (lvl >= up.maxLevel) return;
+  const cost = up.costs[lvl + 1];
+  if (S.rp < cost) return;
+
+  S.rp -= cost;
+  S.upgrades[id] = lvl + 1;
+
+  // Side effects
+  if (id === 'pegArray') generatePegs();
+
+  renderUpgrades();
+  checkMilestones();
+}
+
+function renderStats() {
+  const container = document.getElementById('tab-stats');
+  const stats = [
+    ['Total Bonks', formatNum(S.totalBonks)],
+    ['Total RP Earned', formatNum(S.totalRp)],
+    ['Current RP', formatNum(S.rp)],
+    ['Active Subjects', balls.length],
+    ['Peak Simultaneous Airborne', S.peakAirborne],
+    ['Fastest Ball (Mach)', S.fastestBall.toFixed(2)],
+    ['Citation Multiplier', citationMult().toFixed(2) + 'x'],
+    ['Papers Published', S.papersPublished],
+    ['Passive RP/s', getValue('researchGrant')],
+  ];
+
+  container.innerHTML = '<div class="section-title">LAB METRICS</div>' +
+    stats.map(([label, value]) =>
+      `<div class="stat-row"><span class="stat-label">${label}</span><span class="stat-value">${value}</span></div>`
+    ).join('');
+}
+
+function renderPrestige() {
+  const container = document.getElementById('tab-prestige');
+  const rpNeeded = 10000 * Math.pow(3, S.papersPublished);
+  const canPrestige = S.totalRp >= rpNeeded;
+  const newCitations = Math.floor(Math.sqrt(S.totalRp / 1000));
+  const title = generatePaperTitle();
+
+  container.innerHTML = `
+    <div class="prestige-box">
+      <h3>PUBLISH PAPER</h3>
+      <p>Submit your findings for peer review. All lab progress will be reset, but you'll earn Citations — a permanent RP multiplier.</p>
+      <div class="prestige-citations">Citations: ${S.citations}</div>
+      <div class="prestige-mult">RP Multiplier: ${citationMult().toFixed(2)}x</div>
+      <p>Publishing now will earn <strong style="color:var(--accent)">${newCitations}</strong> new citations.</p>
+      <p style="font-size:0.55rem">Requires ${formatNum(rpNeeded)} lifetime RP (you have ${formatNum(S.totalRp)})</p>
+      <button class="prestige-btn" ${canPrestige ? '' : 'disabled'} id="prestige-btn">Publish Paper</button>
+      <div class="paper-title">"${title}"</div>
+    </div>`;
+
+  const btn = document.getElementById('prestige-btn');
+  if (btn) btn.addEventListener('click', doPrestige);
+}
+
+function generatePaperTitle() {
+  const ballCount = getValue('subjectCount');
+  const grav = getValue('gravity');
+  const subjects = [
+    `${ballCount} Balls`,
+    `${ballCount} Spherical Subjects`,
+    `Multiple Kinetic Entities`,
+    `${ballCount} Unsupervised Projectiles`,
+  ];
+  const conditions = [
+    `Under ${(grav / 0.4).toFixed(0)}x Gravity`,
+    `In a Confined Chamber`,
+    `With Questionable Ethics Approval`,
+    `Without Adequate Safety Equipment`,
+  ];
+  const conclusions = [
+    'A Retrospective',
+    'Preliminary Findings',
+    'We Cannot Explain Our Results',
+    'Please Fund Us',
+    'An Apology',
+    'Do Not Attempt to Replicate',
+  ];
+  const pick = arr => arr[Math.floor(Math.random() * arr.length)];
+  return `On the Unexpected Behavior of ${pick(subjects)} ${pick(conditions)}: ${pick(conclusions)}`;
+}
+
+function doPrestige() {
+  const rpNeeded = 10000 * Math.pow(3, S.papersPublished);
+  if (S.totalRp < rpNeeded) return;
+  const newCitations = Math.floor(Math.sqrt(S.totalRp / 1000));
+  const title = generatePaperTitle();
+
+  S.citations += newCitations;
+  S.papersPublished++;
+  S.rp = 0;
+  S.totalRp = 0;
+  S.totalBonks = 0;
+  S.peakAirborne = 0;
+  S.fastestBall = 0;
+  S.upgrades = {};
+  balls = [];
+  pegs = [];
+  particles = [];
+
+  showToast(`PAPER PUBLISHED: "${title}" — Earned ${newCitations} citations!`);
+  renderUpgrades();
+  renderPrestige();
+  saveGame();
+}
+
+// ─── Tabs ──────────────────────────────────────────────────────
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    document.querySelectorAll('[id^="tab-"]').forEach(el => el.style.display = 'none');
+    document.getElementById('tab-' + tab.dataset.tab).style.display = '';
+    if (tab.dataset.tab === 'stats') renderStats();
+    if (tab.dataset.tab === 'prestige') renderPrestige();
+  });
+});
+
+// ─── Milestones & Log ──────────────────────────────────────────
+const LOG_MESSAGES = [
+  'Day 1: The bounce chamber has been initialized. All systems nominal.',
+  'Day 3: First subjects deployed. They appear to enjoy bouncing.',
+  'Day 7: Subject #3 has been nicknamed "Zippy" by the interns. This is unprofessional.',
+  'Day 14: The balls have begun to bounce in unison. We do not know why.',
+  'Day 21: Brief gravitational anomaly detected near the coffee machine. Probably unrelated.',
+  'Day 30: Subject #12 achieved 47 consecutive wall bounces. New lab record.',
+  'Day 42: Janitor reports hearing "bonking" sounds after hours. Lab is empty at night. Concerning.',
+  'Day 56: Ethics board inquiry into "ball welfare." We assured them balls cannot suffer.',
+  'Day 73: A ball escaped the chamber. Found in the parking lot. Escape route unknown.',
+  'Day 89: Subjects appear to be forming patterns. Dr. Chen insists this is pareidolia.',
+  'Day 104: The bounce sounds have developed a rhythm. It sounds like Morse code for "MORE."',
+  'Day 120: Insurance company has questions about our "high-velocity kinetic research."',
+  'Day 142: The balls are vibrating at a frequency that makes the lights flicker.',
+  'Day 168: We have run out of replacement ceiling tiles.',
+  'Day 200: The interns have started a betting pool on individual ball performance. HR was notified.',
+  'Day 250: One subject has not stopped bouncing for 72 hours. We admire its dedication.',
+  'Day 300: The building next door complained about tremors. We blamed construction.',
+  'Day 365: Annual review. Publications: 0. Balls bounced: many. Funding: somehow renewed.',
+  'Day 400: A ball phased through the chamber wall. Quantum tunneling should not apply at this scale.',
+  'Day 500: The noise level in the lab now exceeds OSHA guidelines. We have distributed earplugs.',
+];
+
+const MILESTONES = [
+  { bonks: 100, msg: 'INCIDENT REPORT: 100 bonks recorded. The chamber walls are holding. For now.' },
+  { bonks: 1000, msg: 'LAB MEMO: 1,000 total bonks. Sound levels approaching "rock concert." Ear protection mandatory.' },
+  { bonks: 10000, msg: 'INCIDENT REPORT: 10,000 bonks. Hairline fracture detected in chamber wall. Reinforcement scheduled.' },
+  { bonks: 50000, msg: 'SAFETY ALERT: 50,000 bonks. The chamber has developed a resonance frequency. Desktop items vibrating.' },
+  { bonks: 100000, msg: 'INCIDENT REPORT #847: Subject achieved escape velocity. Requesting ceiling repairs.' },
+  { bonks: 500000, msg: 'EMERGENCY MEMO: 500K bonks. The chamber is humming. It was not designed to hum.' },
+  { bonks: 1000000, msg: 'CLASSIFIED: 1M bonks achieved. The Department of Energy has requested a meeting.' },
+];
+
+let lastMilestoneIdx = 0;
+function checkMilestones() {
+  for (let i = lastMilestoneIdx; i < MILESTONES.length; i++) {
+    if (S.totalBonks >= MILESTONES[i].bonks) {
+      showToast(MILESTONES[i].msg);
+      lastMilestoneIdx = i + 1;
+    }
+  }
+}
+
+function updateLog() {
+  const idx = Math.floor(S.totalBonks / 500) % LOG_MESSAGES.length;
+  if (idx !== S.logIndex) {
+    S.logIndex = idx;
+    const el = document.getElementById('log-text');
+    el.textContent = 'Research Log: ' + LOG_MESSAGES[idx];
+    el.style.animation = 'none';
+    el.offsetHeight; // reflow
+    el.style.animation = '';
+  }
+}
+
+function showToast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 4000);
+}
+
+// ─── Save/Load ─────────────────────────────────────────────────
+function saveGame() {
+  S.lastSave = Date.now();
+  localStorage.setItem(SAVE_KEY, JSON.stringify(S));
+  const el = document.getElementById('save-indicator');
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 1500);
+}
+
+function loadGame() {
+  const data = localStorage.getItem(SAVE_KEY);
+  if (!data) return;
+  try {
+    const parsed = JSON.parse(data);
+    S = { ...defaultState(), ...parsed };
+
+    // Offline progress
+    const elapsed = (Date.now() - S.lastSave) / 1000;
+    const passiveRate = getValue('researchGrant');
+    if (passiveRate > 0 && elapsed > 0) {
+      const offlineRp = passiveRate * elapsed;
+      S.rp += offlineRp;
+      S.totalRp += offlineRp;
+      showToast(`Welcome back! Lab generated ${formatNum(offlineRp)} RP while you were away (${Math.floor(elapsed / 60)} min).`);
+    }
+
+    // Restore milestones index
+    for (let i = 0; i < MILESTONES.length; i++) {
+      if (S.totalBonks >= MILESTONES[i].bonks) lastMilestoneIdx = i + 1;
+    }
+  } catch (e) { /* corrupt save, start fresh */ }
+}
+
+function resetGame() {
+  localStorage.removeItem(SAVE_KEY);
+  S = defaultState();
+  balls = [];
+  pegs = [];
+  particles = [];
+  lastMilestoneIdx = 0;
+  renderUpgrades();
+  document.getElementById('reset-modal').classList.remove('show');
+}
+
+// ─── Reset Modal ───────────────────────────────────────────────
+document.getElementById('version-btn').addEventListener('click', () => {
+  document.getElementById('reset-modal').classList.add('show');
+});
+document.getElementById('reset-cancel').addEventListener('click', () => {
+  document.getElementById('reset-modal').classList.remove('show');
+});
+document.getElementById('reset-confirm').addEventListener('click', resetGame);
+
+// ─── Canvas Click (manual drop) ────────────────────────────────
+CANVAS.addEventListener('click', (e) => {
+  const rect = CANVAS.getBoundingClientRect();
+  const x = (e.clientX - rect.left) * (cw / rect.width);
+  const normalCount = balls.filter(b => b.type === 'normal').length;
+  if (normalCount < getValue('subjectCount')) {
+    const b = new Ball(x, -BALL_RADIUS, 'normal');
+    balls.push(b);
+  }
+});
+
+// ─── Resize ────────────────────────────────────────────────────
+function resize() {
+  const wrap = document.querySelector('.chamber-wrap');
+  cw = wrap.clientWidth - 10;
+  ch = wrap.clientHeight - 10;
+  CANVAS.width = cw;
+  CANVAS.height = ch;
+  generatePegs();
+}
+
+// ─── Game Loop ─────────────────────────────────────────────────
+let lastTime = 0;
+let saveTimer = 0;
+let uiTimer = 0;
+
+function gameLoop(timestamp) {
+  const dt = Math.min((timestamp - lastTime) / 1000, 0.05); // cap delta
+  lastTime = timestamp;
+
+  // Passive RP
+  const passiveRate = getValue('researchGrant');
+  if (passiveRate > 0) {
+    S.rp += passiveRate * dt;
+    S.totalRp += passiveRate * dt;
+  }
+
+  tryDrop(timestamp);
+  updatePhysics(dt);
+  render();
+
+  // UI updates (throttled)
+  uiTimer += dt;
+  if (uiTimer >= 0.25) {
+    uiTimer = 0;
+    document.getElementById('rp-count').textContent = formatNum(S.rp);
+    updateLog();
+    checkMilestones();
+    // Update stats if visible
+    if (document.querySelector('.tab[data-tab="stats"]').classList.contains('active')) renderStats();
+    // Update prestige if visible
+    if (document.querySelector('.tab[data-tab="prestige"]').classList.contains('active')) renderPrestige();
+    // Update upgrade costs
+    document.querySelectorAll('.upgrade').forEach(el => {
+      const id = el.dataset.id;
+      const lvl = getLevel(id);
+      const maxed = lvl >= UPGRADES[id].maxLevel;
+      const cost = getNextCost(id);
+      const canAfford = S.rp >= cost;
+      const costEl = el.querySelector('.upgrade-cost');
+      if (costEl && !maxed) {
+        costEl.classList.toggle('cant-afford', !canAfford);
+      }
+    });
+  }
+
+  // Auto-save
+  saveTimer += dt;
+  if (saveTimer >= 30) {
+    saveTimer = 0;
+    saveGame();
+  }
+
+  requestAnimationFrame(gameLoop);
+}
+
+// ─── Init ──────────────────────────────────────────────────────
+loadGame();
+resize();
+window.addEventListener('resize', resize);
+window.addEventListener('beforeunload', saveGame);
+renderUpgrades();
+
+requestAnimationFrame(gameLoop);
+</script>
+</body>
+</html>
