@@ -334,7 +334,7 @@ canvas { display: block; width: 100%; height: 100%; object-fit: contain; object-
   </main>
 </div>
 <div id="overlay" class="hidden"></div>
-<div class="version">v0.6</div>
+<div class="version">v0.7</div>
 
 <script>
 (() => {
@@ -417,7 +417,7 @@ function freshState() {
     buildings: [], buildCounts: {}, buildLevels: {},
     enemies: [], projectiles: [], mines: [],
     particles: [], floats: [], hitscanLines: [],
-    shotCount: 0, lastStandAvailable: false,
+    shotCount: 0, lastStandAvailable: false, salvageCount: 0,
     empCooldown: 0,
     gameOver: false,
     runStats: { enemiesKilled: 0, scrapEarned: 0, startTime: Date.now() },
@@ -501,6 +501,10 @@ function maxShieldMult() { return 1 + skill('hull_1') * 0.10; }
 function mineDmgMult() { return 1 + skill('tac_1') * 0.15; }
 function flakConeMult() { return 1 + skill('tac_2') * 0.10; }
 function startingEnergy() { return 50 + skill('eco_3') * 30; }
+function skillCost(node, curRank) {
+  if (curRank < node.maxRank) return node.cost;
+  return Math.ceil(node.cost * Math.pow(2, curRank - node.maxRank + 1));
+}
 
 // ─── SAVE / LOAD ───────────────────────────────────────
 function save() {
@@ -561,8 +565,8 @@ function buildCost(type) {
 
 function upgradeCost(type) {
   const lv = G.buildLevels[type] || 1;
-  if (lv >= 5) return Infinity;
-  return [0, 15, 35, 75, 150][lv];
+  if (lv <= 4) return [0, 15, 35, 75, 150][lv];
+  return Math.ceil(150 * Math.pow(1.5, lv - 4));
 }
 
 function makeBuilding(type, bAngle) {
@@ -588,7 +592,7 @@ function buildBuilding(type) {
 
 function upgradeBuilding(type) {
   const cost = upgradeCost(type);
-  if (G.scrap < cost || (G.buildLevels[type] || 1) >= 5) return;
+  if (G.scrap < cost) return;
   G.scrap -= cost;
   G.buildLevels[type] = (G.buildLevels[type] || 1) + 1;
   // Update max shield if shield generator
@@ -1022,9 +1026,10 @@ function purchaseSkill(id) {
   }
   if (!node) return;
   const cur = skill(id);
-  if (cur >= node.maxRank) return;
-  if (G.totalSP < node.cost) return;
-  G.totalSP -= node.cost;
+  if (node.capstone && cur >= node.maxRank) return;
+  const cost = skillCost(node, cur);
+  if (G.totalSP < cost) return;
+  G.totalSP -= cost;
   G.skills[id] = cur + 1;
   // Recalc shield if hull skill
   if (id.startsWith('hull')) recalcMaxShield();
@@ -1434,18 +1439,15 @@ function renderUpgradeTab() {
     const def = BLDG[key];
     const lv = G.buildLevels[key] || 1;
     const cost = upgradeCost(key);
-    const maxed = lv >= 5;
-    const canUp = !maxed && G.scrap >= cost;
+    const canUp = G.scrap >= cost;
     return `<div class="upg-card">
       <div class="upg-header">
         <span class="upg-name" style="color:${def.color}">${def.name} ×${count}</span>
-        <span class="upg-level">Lv.${lv}/5</span>
+        <span class="upg-level">Lv.${lv}</span>
       </div>
-      <div class="upg-bar"><div class="upg-fill" style="width:${lv*20}%;background:${def.color}"></div></div>
       <div style="display:flex;justify-content:space-between;align-items:center;margin-top:0.3rem">
         <span style="font-size:0.5rem;color:var(--muted)">${getUpgradeDesc(key, lv)}</span>
-        ${maxed ? '<span style="font-size:0.55rem;color:var(--muted)">MAX</span>'
-          : `<button class="upg-btn ${canUp ? '' : 'disabled'}" onclick="upgradeB('${key}')">${cost}⚙ Upgrade</button>`}
+        <button class="upg-btn ${canUp ? '' : 'disabled'}" onclick="upgradeB('${key}')">${fmtNum(cost)}⚙ Upgrade</button>
       </div>
     </div>`;
   }).join('');
@@ -1468,19 +1470,22 @@ function renderSkillsTab() {
       <div class="skill-branch-name" style="color:${branch.color}">${branch.name}</div>`;
     for (const node of branch.nodes) {
       const rank = skill(node.id);
-      const maxed = rank >= node.maxRank;
-      const canBuy = !maxed && G.totalSP >= node.cost;
+      const maxed = node.capstone && rank >= node.maxRank;
+      const cost = skillCost(node, rank);
+      const canBuy = !maxed && G.totalSP >= cost;
       const cls = maxed ? 'maxed' : (!canBuy ? 'locked' : '');
+      const pipCount = Math.min(rank, node.maxRank);
       const pips = Array.from({ length: node.maxRank }, (_, i) =>
-        `<div class="pip ${i < rank ? 'filled' : ''}" style="color:${branch.color}"></div>`
+        `<div class="pip ${i < pipCount ? 'filled' : ''}" style="color:${branch.color}"></div>`
       ).join('');
+      const rankLabel = rank > node.maxRank ? `<span style="font-size:0.55rem;color:${branch.color};margin-left:3px">+${rank - node.maxRank}</span>` : '';
       html += `<div class="skill-node ${cls}" onclick="${canBuy ? `buySkill('${node.id}')` : ''}" style="${node.capstone ? 'border-left:2px solid ' + branch.color : ''}">
         <div class="skill-info">
-          <div class="skill-name">${node.name}</div>
+          <div class="skill-name">${node.name}${rankLabel}</div>
           <div class="skill-desc">${node.desc}</div>
         </div>
         <div class="skill-pips">${pips}</div>
-        ${maxed ? '' : `<div class="skill-cost" style="color:var(--cyan)">${node.cost}SP</div>`}
+        ${maxed ? '' : `<div class="skill-cost" style="color:var(--cyan)">${cost}SP</div>`}
       </div>`;
     }
     html += '</div>';
