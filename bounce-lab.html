@@ -384,7 +384,7 @@ body {
     <h1>BOUNCE LAB</h1>
     <div class="rp-display"><span id="rp-count">0</span> RP</div>
   </div>
-  <div class="version" id="version-btn">v0.5</div>
+  <div class="version" id="version-btn">v0.6</div>
 </div>
 
 <div class="main">
@@ -462,7 +462,7 @@ const UPGRADES = {
       return descs[Math.min(i, descs.length - 1)] || 'Maximum subject count reached.';
     },
     levels: [5, 10, 20, 50, 100, 200],
-    costs: [0, 25, 150, 800, 5000, 40000],
+    costs: [0, 100, 1000, 8000, 80000, 800000],
     maxLevel: 5,
   },
   dropFreq: {
@@ -479,7 +479,7 @@ const UPGRADES = {
       return descs[Math.min(i, descs.length - 1)];
     },
     levels: [2000, 1500, 1000, 600, 350, 200],
-    costs: [0, 30, 200, 1200, 7000, 50000],
+    costs: [0, 150, 1200, 10000, 100000, 1000000],
     maxLevel: 5,
   },
   subjectMass: {
@@ -496,7 +496,7 @@ const UPGRADES = {
       return descs[Math.min(i, descs.length - 1)];
     },
     levels: [1, 1.5, 2.5, 4, 7, 12],
-    costs: [0, 40, 250, 1500, 10000, 80000],
+    costs: [0, 200, 2000, 15000, 150000, 1500000],
     maxLevel: 5,
   },
 
@@ -515,7 +515,7 @@ const UPGRADES = {
       return descs[Math.min(i, descs.length - 1)];
     },
     levels: [0.4, 0.6, 0.9, 1.4, 2.0, 3.0],
-    costs: [0, 50, 300, 2000, 12000, 90000],
+    costs: [0, 250, 2500, 20000, 200000, 2000000],
     maxLevel: 5,
   },
   elasticity: {
@@ -532,7 +532,7 @@ const UPGRADES = {
       return descs[Math.min(i, descs.length - 1)];
     },
     levels: [0.7, 0.8, 0.88, 0.94, 0.98, 1.02],
-    costs: [0, 60, 400, 2500, 15000, 120000],
+    costs: [0, 300, 3000, 25000, 250000, 2500000],
     maxLevel: 5,
   },
   friction: {
@@ -549,7 +549,7 @@ const UPGRADES = {
       return descs[Math.min(i, descs.length - 1)];
     },
     levels: [0.99, 0.995, 0.998, 0.999, 0.9995, 0.9999],
-    costs: [0, 45, 280, 1800, 11000, 85000],
+    costs: [0, 200, 2000, 18000, 180000, 1800000],
     maxLevel: 5,
   },
 
@@ -568,7 +568,7 @@ const UPGRADES = {
       return descs[Math.min(i, descs.length - 1)];
     },
     levels: [0, 1, 2, 3, 4, 5],
-    costs: [0, 100, 600, 3500, 20000, 150000],
+    costs: [0, 500, 5000, 40000, 400000, 4000000],
     maxLevel: 5,
   },
   bumpers: {
@@ -583,7 +583,7 @@ const UPGRADES = {
       return descs[Math.min(i, descs.length - 1)];
     },
     levels: [0, 1.3, 1.6, 2.0],
-    costs: [0, 200, 2000, 25000],
+    costs: [0, 1500, 20000, 300000],
     maxLevel: 3,
   },
   spinner: {
@@ -598,7 +598,7 @@ const UPGRADES = {
       return descs[Math.min(i, descs.length - 1)];
     },
     levels: [0, 1, 2, 3],
-    costs: [0, 500, 5000, 50000],
+    costs: [0, 3000, 50000, 600000],
     maxLevel: 3,
   },
 
@@ -608,7 +608,7 @@ const UPGRADES = {
     section: 'ANOMALOUS SUBJECTS',
     desc: () => 'Deploy one high-mass subject. 3x standard mass. Screen tremor on impact. Significant RP bonus per collision.',
     levels: [0, 1],
-    costs: [0, 3000],
+    costs: [0, 25000],
     maxLevel: 1,
   },
   splitterBall: {
@@ -616,7 +616,7 @@ const UPGRADES = {
     section: 'ANOMALOUS SUBJECTS',
     desc: () => 'Deploy one fission-capable subject. Splits into 3 sub-subjects after 5 bounces. The ethics committee was not consulted.',
     levels: [0, 1],
-    costs: [0, 8000],
+    costs: [0, 75000],
     maxLevel: 1,
   },
   magnetBall: {
@@ -624,7 +624,7 @@ const UPGRADES = {
     section: 'ANOMALOUS SUBJECTS',
     desc: () => 'Deploy one ferromagnetic subject. Attracts nearby balls, increasing local collision density. We attached a magnet to a ball. Grant money well spent.',
     levels: [0, 1],
-    costs: [0, 15000],
+    costs: [0, 150000],
     maxLevel: 1,
   },
 
@@ -634,7 +634,7 @@ const UPGRADES = {
     section: 'AUTOMATION',
     desc: () => 'Automate the ball dropper mechanism. Subjects will deploy without manual intervention. The interns are relieved.',
     levels: [0, 1],
-    costs: [0, 500],
+    costs: [0, 2000],
     maxLevel: 1,
   },
   researchGrant: {
@@ -650,7 +650,7 @@ const UPGRADES = {
       return descs[Math.min(i, descs.length - 1)];
     },
     levels: [0, 1, 5, 25, 100],
-    costs: [0, 1000, 8000, 60000, 500000],
+    costs: [0, 5000, 60000, 600000, 6000000],
     maxLevel: 4,
   },
 };
@@ -1233,7 +1233,7 @@ function renderStats() {
 
 function renderPrestige() {
   const container = document.getElementById('tab-prestige');
-  const rpNeeded = 10000 * Math.pow(3, S.papersPublished);
+  const rpNeeded = 100000 * Math.pow(3, S.papersPublished);
   const canPrestige = S.totalRp >= rpNeeded;
   const newCitations = Math.floor(Math.sqrt(S.totalRp / 1000));
   const title = generatePaperTitle();
@@ -1282,7 +1282,7 @@ function generatePaperTitle() {
 }
 
 function doPrestige() {
-  const rpNeeded = 10000 * Math.pow(3, S.papersPublished);
+  const rpNeeded = 100000 * Math.pow(3, S.papersPublished);
   if (S.totalRp < rpNeeded) return;
   const newCitations = Math.floor(Math.sqrt(S.totalRp / 1000));
   const title = generatePaperTitle();
